@@ -12,7 +12,7 @@ function loadImageFromSrc(src) {
   });
 }
 
-function removeBackground(img, { tolerance = 30, maxDim = 900 } = {}) {
+function removeBackground(img, { localTolerance = 26, seedTolerance = 55, globalTolerance = 95, maxDim = 900 } = {}) {
   return new Promise((resolve) => {
     const w = img.naturalWidth || img.width;
     const h = img.naturalHeight || img.height;
@@ -31,58 +31,63 @@ function removeBackground(img, { tolerance = 30, maxDim = 900 } = {}) {
     const n = cw * ch;
     const idxOf = (x, y) => y * cw + x;
 
-    // Sample the border to find a reference background color (median is
-    // robust against a stray shadow or logo pixel on the edge).
-    const borderR = [], borderG = [], borderB = [];
-    for (let x = 0; x < cw; x++) {
-      for (const y of [0, ch - 1]) {
-        const di = idxOf(x, y) * 4;
-        borderR.push(data[di]); borderG.push(data[di + 1]); borderB.push(data[di + 2]);
-      }
-    }
-    for (let y = 0; y < ch; y++) {
-      for (const x of [0, cw - 1]) {
-        const di = idxOf(x, y) * 4;
-        borderR.push(data[di]); borderG.push(data[di + 1]); borderB.push(data[di + 2]);
-      }
-    }
-    const median = (arr) => { const s = arr.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
-    const refR = median(borderR), refG = median(borderG), refB = median(borderB);
-
-    function distToRef(idx) {
-      const di = idx * 4;
-      const dr = data[di] - refR, dg = data[di + 1] - refG, db = data[di + 2] - refB;
-      return Math.sqrt(dr * dr + dg * dg + db * db);
-    }
-
+    // Real photos (a bed, a floor) rarely have one uniform background color -
+    // there's wood grain, wrinkled fabric, shadows. So this isn't a single
+    // reference color: each pixel we accept as background carries forward
+    // the color of the border pixel that originally started its region. A
+    // neighbor is accepted only if it's close to BOTH the pixel right next
+    // to it (tolerates gradual texture/shadow) AND that original seed color
+    // (stops the fill before it drifts, step by step, into the garment).
+    const seedR = new Uint8Array(n), seedG = new Uint8Array(n), seedB = new Uint8Array(n);
     const visited = new Uint8Array(n);
     const queue = new Int32Array(n);
     let qHead = 0, qTail = 0;
 
-    function tryAdd(x, y) {
+    const borderR = [], borderG = [], borderB = [];
+    function seedPixel(x, y) {
+      const idx = idxOf(x, y);
+      const di = idx * 4;
+      borderR.push(data[di]); borderG.push(data[di + 1]); borderB.push(data[di + 2]);
+      if (visited[idx]) return;
+      visited[idx] = 1;
+      seedR[idx] = data[di]; seedG[idx] = data[di + 1]; seedB[idx] = data[di + 2];
+      queue[qTail++] = idx;
+    }
+    for (let x = 0; x < cw; x++) { seedPixel(x, 0); seedPixel(x, ch - 1); }
+    for (let y = 0; y < ch; y++) { seedPixel(0, y); seedPixel(cw - 1, y); }
+
+    // A backstop against the local/seed checks alone: even a photo with real
+    // texture rarely swings from, say, light bedsheet to near-black without
+    // ever being far from the OVERALL border tone. A garment with strong
+    // contrast against the general scene stays excluded even if one shadowed
+    // patch of background happens to locally resemble it.
+    const median = (arr) => { const s = arr.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+    const globalR = median(borderR), globalG = median(borderG), globalB = median(borderB);
+
+    function tryAdd(x, y, fromIdx) {
       if (x < 0 || x >= cw || y < 0 || y >= ch) return;
       const idx = idxOf(x, y);
       if (visited[idx]) return;
-      if (distToRef(idx) <= tolerance) {
-        visited[idx] = 1;
-        queue[qTail++] = idx;
-      }
-    }
-
-    for (let x = 0; x < cw; x++) {
-      for (const y of [0, ch - 1]) tryAdd(x, y);
-    }
-    for (let y = 0; y < ch; y++) {
-      for (const x of [0, cw - 1]) tryAdd(x, y);
+      const di = idx * 4, fi = fromIdx * 4;
+      const dr1 = data[di] - data[fi], dg1 = data[di + 1] - data[fi + 1], db1 = data[di + 2] - data[fi + 2];
+      if (Math.sqrt(dr1 * dr1 + dg1 * dg1 + db1 * db1) > localTolerance) return;
+      const sr = seedR[fromIdx], sg = seedG[fromIdx], sb = seedB[fromIdx];
+      const dr2 = data[di] - sr, dg2 = data[di + 1] - sg, db2 = data[di + 2] - sb;
+      if (Math.sqrt(dr2 * dr2 + dg2 * dg2 + db2 * db2) > seedTolerance) return;
+      const dr3 = data[di] - globalR, dg3 = data[di + 1] - globalG, db3 = data[di + 2] - globalB;
+      if (Math.sqrt(dr3 * dr3 + dg3 * dg3 + db3 * db3) > globalTolerance) return;
+      visited[idx] = 1;
+      seedR[idx] = sr; seedG[idx] = sg; seedB[idx] = sb;
+      queue[qTail++] = idx;
     }
 
     while (qHead < qTail) {
       const idx = queue[qHead++];
       const x = idx % cw, y = (idx / cw) | 0;
-      tryAdd(x - 1, y);
-      tryAdd(x + 1, y);
-      tryAdd(x, y - 1);
-      tryAdd(x, y + 1);
+      tryAdd(x - 1, y, idx);
+      tryAdd(x + 1, y, idx);
+      tryAdd(x, y - 1, idx);
+      tryAdd(x, y + 1, idx);
     }
 
     // Find the "shoulder line": the widest point of the garment within the
