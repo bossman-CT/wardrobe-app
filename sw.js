@@ -1,4 +1,4 @@
-const CACHE = "wardrobe-v9";
+const CACHE = "wardrobe-v10";
 const ASSETS = [
   "./",
   "index.html",

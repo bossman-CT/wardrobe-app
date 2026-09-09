@@ -3,7 +3,7 @@ const DEFAULT_PLACEMENT = {
   bottom: { x: 27, y: 45, w: 46, h: 39, r: 0 },
   shoes: { x: 33, y: 79, w: 34, h: 11, r: 0 }
 };
-const CATEGORIES = ["top", "bottom", "other"];
+const CATEGORIES = ["top", "bottom"];
 const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
 
 // Shoes/accessories are picked as a color rather than photographed - a
@@ -66,6 +66,16 @@ const builder = {
 let pickerTargetCat = null;
 let deckIndex = 0;
 
+function openPhotoView(item) {
+  $("#photo-view-img").src = item.image;
+  $("#photo-view-name").textContent = item.name || "";
+  $("#photo-view-modal").classList.add("open");
+}
+$("#photo-view-close").addEventListener("click", () => $("#photo-view-modal").classList.remove("open"));
+$("#photo-view-modal").addEventListener("click", (e) => {
+  if (e.target.id === "photo-view-modal") $("#photo-view-modal").classList.remove("open");
+});
+
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function $(sel) { return document.querySelector(sel); }
 function $all(sel) { return Array.from(document.querySelectorAll(sel)); }
@@ -99,7 +109,9 @@ function renderCloset() {
       grid.innerHTML = `<div class="empty-grid-hint">No items yet</div>`;
       return;
     }
-    items.forEach(item => grid.appendChild(buildItemCard(item)));
+    items.forEach(item => grid.appendChild(buildItemCard(item, {
+      onClick: (it) => openPhotoView(it)
+    })));
   });
 }
 
@@ -213,7 +225,7 @@ function renderMannequinBase() {
 }
 
 function renderAllSlots() {
-  ["top", "bottom", "shoes"].forEach(renderSlot);
+  ["top", "bottom"].forEach(renderSlot);
 }
 
 function renderSlot(cat) {
