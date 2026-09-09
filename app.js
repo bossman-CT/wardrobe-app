@@ -6,6 +6,22 @@ const DEFAULT_PLACEMENT = {
 const CATEGORIES = ["top", "bottom", "shoes", "other"];
 const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
 
+// Where the mannequin's own shoulder line sits, in #mannequin-stage percent
+// coordinates - derived from the mannequin SVG geometry (shoulder span is
+// ~95/200 of the figure's width at y=100/560, rendered at 92% of stage
+// height, centered). Used to auto-align a shirt photo's detected shoulders.
+const MANNEQUIN_SHOULDER = { y: 20.43, centerX: 50, width: 26 };
+
+function autoTopPlacement(item) {
+  const s = item && item.shoulder;
+  if (!s || !s.widthFrac) return { ...DEFAULT_PLACEMENT.top };
+  const w = clamp(MANNEQUIN_SHOULDER.width / s.widthFrac, 20, 80);
+  const h = clamp(w * 0.6 * s.imgAspect, 8, 85);
+  const x = clamp(MANNEQUIN_SHOULDER.centerX - s.xFrac * w, -10, 100);
+  const y = clamp(MANNEQUIN_SHOULDER.y - s.yFrac * h, -10, 100);
+  return { x, y, w, h, r: 0 };
+}
+
 let mannequinInstanceCounter = 0;
 function instantiateMannequin(gender) {
   const gradId = gender === "male" ? "maleBody" : "femaleBody";
@@ -130,13 +146,17 @@ $("#add-save").addEventListener("click", async () => {
   $("#add-save").disabled = true;
   $("#add-save").textContent = "Processing...";
   let image = pendingImage;
+  let shoulder = null;
   try {
     const img = await loadImageFromSrc(pendingImage);
-    image = await removeBackground(img);
+    const processed = await removeBackground(img);
+    image = processed.dataUrl;
+    shoulder = processed.shoulder;
   } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
     image,
+    shoulder,
     category: $("#add-category").value,
     name: $("#add-name").value.trim(),
     createdAt: Date.now()
@@ -197,14 +217,15 @@ function renderSlot(cat) {
   slot.style.height = placement.h + "%";
   slot.style.zIndex = LAYER_ORDER[cat] || 0;
 
+  const rotatable = cat !== "top";
   const wrap = document.createElement("div");
   wrap.className = "placed-item";
   wrap.dataset.cat = cat;
-  wrap.style.transform = `rotate(${placement.r || 0}deg)`;
+  wrap.style.transform = rotatable ? `rotate(${placement.r || 0}deg)` : "";
   wrap.innerHTML = `
     <button class="swap-handle">↻</button>
     <img src="${item ? item.image : ""}" alt="">
-    <div class="rotate-handle">⟳</div>
+    ${rotatable ? '<div class="rotate-handle">⟳</div>' : ""}
     <div class="resize-handle"></div>
   `;
   slot.appendChild(wrap);
@@ -214,9 +235,9 @@ function renderSlot(cat) {
     openPicker(cat);
   });
 
-  makeDraggable(slot, wrap, cat, placement);
+  makeDraggable(slot, wrap, cat, placement, rotatable);
   makeResizable(wrap.querySelector(".resize-handle"), slot, cat, placement);
-  makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
+  if (rotatable) makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
 }
 
 function resetSlotDefaultRect(slot, cat) {
@@ -234,7 +255,7 @@ function angleOf(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
 
 // Single finger drags the item; a second finger turns the gesture into a
 // pinch-to-resize + twist-to-rotate, like placing a sticker in a photo app.
-function makeDraggable(slot, wrap, cat, placement) {
+function makeDraggable(slot, wrap, cat, placement, rotatable) {
   const pointers = new Map();
   let dragStart = null;
   let pinchStart = null;
@@ -283,10 +304,12 @@ function makeDraggable(slot, wrap, cat, placement) {
       placement.h = clamp(pinchStart.h * scale, 8, MAX_ITEM_SIZE);
       placement.x = pinchStart.cx - placement.w / 2;
       placement.y = pinchStart.cy - placement.h / 2;
-      const angle = angleOf(pts[0], pts[1]);
-      placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
       applyRect();
-      wrap.style.transform = `rotate(${placement.r}deg)`;
+      if (rotatable) {
+        const angle = angleOf(pts[0], pts[1]);
+        placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
+        wrap.style.transform = `rotate(${placement.r}deg)`;
+      }
     }
   };
 
@@ -365,15 +388,21 @@ function openPicker(cat) {
       grid.appendChild(buildItemCard(item, {
         noDelete: true,
         onClick: (it) => {
-          const existing = builder.placements[cat];
-          builder.placements[cat] = {
-            itemId: it.id,
-            x: existing ? existing.x : DEFAULT_PLACEMENT[cat].x,
-            y: existing ? existing.y : DEFAULT_PLACEMENT[cat].y,
-            w: existing ? existing.w : DEFAULT_PLACEMENT[cat].w,
-            h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
-            r: existing ? (existing.r || 0) : 0
-          };
+          if (cat === "top") {
+            // Shirts are auto-aligned to the mannequin's shoulders rather
+            // than left at a manual position, so re-align fresh each time.
+            builder.placements[cat] = { itemId: it.id, ...autoTopPlacement(it) };
+          } else {
+            const existing = builder.placements[cat];
+            builder.placements[cat] = {
+              itemId: it.id,
+              x: existing ? existing.x : DEFAULT_PLACEMENT[cat].x,
+              y: existing ? existing.y : DEFAULT_PLACEMENT[cat].y,
+              w: existing ? existing.w : DEFAULT_PLACEMENT[cat].w,
+              h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
+              r: existing ? (existing.r || 0) : 0
+            };
+          }
           renderSlot(cat);
           closePicker();
         }
@@ -467,7 +496,7 @@ function renderOutfitDeck() {
       div.style.width = p.w + "%";
       div.style.height = p.h + "%";
       div.style.zIndex = LAYER_ORDER[cat] || 0;
-      div.style.transform = `rotate(${p.r || 0}deg)`;
+      div.style.transform = cat === "top" ? "" : `rotate(${p.r || 0}deg)`;
       div.innerHTML = `<img src="${item ? item.image : ""}" alt="">`;
       stage.appendChild(div);
     });
@@ -540,11 +569,14 @@ async function seedIfEmpty() {
   if (existing.length > 0) return;
   for (const it of SEED_ITEMS) {
     let image = it.image;
+    let shoulder = null;
     try {
       const img = await loadImageFromSrc(it.image);
-      image = await removeBackground(img);
+      const processed = await removeBackground(img);
+      image = processed.dataUrl;
+      shoulder = processed.shoulder;
     } catch (e) { /* fall back to the original photo if processing fails */ }
-    await DB.addItem({ id: uid(), image, category: it.category, name: it.name, createdAt: Date.now() });
+    await DB.addItem({ id: uid(), image, shoulder, category: it.category, name: it.name, createdAt: Date.now() });
   }
 }
 

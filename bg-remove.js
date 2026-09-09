@@ -85,6 +85,34 @@ function removeBackground(img, { tolerance = 30, maxDim = 900 } = {}) {
       tryAdd(x, y + 1);
     }
 
+    // Find the "shoulder line": the widest point of the garment within the
+    // top ~55% of the photo. For a shirt laid flat or hung facing forward,
+    // this reliably lands on the shoulder/sleeve span, which is what lets
+    // the app line a top up on the mannequin automatically.
+    let bestRowWidth = -1, shoulderY = 0, shoulderLeft = 0, shoulderRight = 0;
+    const scanLimit = Math.floor(ch * 0.55);
+    for (let y = 0; y < scanLimit; y++) {
+      let left = -1, right = -1;
+      for (let x = 0; x < cw; x++) {
+        if (!visited[idxOf(x, y)]) {
+          if (left === -1) left = x;
+          right = x;
+        }
+      }
+      if (left !== -1 && (right - left) > bestRowWidth) {
+        bestRowWidth = right - left;
+        shoulderY = y;
+        shoulderLeft = left;
+        shoulderRight = right;
+      }
+    }
+    const shoulder = bestRowWidth > 0 ? {
+      xFrac: (shoulderLeft + shoulderRight) / 2 / cw,
+      widthFrac: (shoulderRight - shoulderLeft) / cw,
+      yFrac: shoulderY / ch,
+      imgAspect: ch / cw
+    } : null;
+
     let alpha = new Float32Array(n);
     for (let i = 0; i < n; i++) alpha[i] = visited[i] ? 0 : 255;
 
@@ -110,6 +138,6 @@ function removeBackground(img, { tolerance = 30, maxDim = 900 } = {}) {
 
     for (let i = 0; i < n; i++) data[i * 4 + 3] = Math.round(alpha[i]);
     ctx.putImageData(imageData, 0, 0);
-    resolve(canvas.toDataURL("image/png"));
+    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder });
   });
 }
