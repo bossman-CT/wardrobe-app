@@ -228,28 +228,36 @@ html, body {
   touch-action: none;
   cursor: grab;
 }
-.garment-shape {
+.placed-item img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   pointer-events: none;
   filter: drop-shadow(0 4px 7px rgba(20,15,10,0.3));
 }
-.garment-shape svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
 .resize-handle {
   position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 20px;
-  height: 20px;
+  right: -14px;
+  bottom: -14px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   touch-action: none;
+  z-index: 2;
+}
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  border-radius: 0 0 2px 0;
 }
 .swap-handle {
   position: absolute;
