@@ -1,4 +1,4 @@
-const CACHE = "wardrobe-v7";
+const CACHE = "wardrobe-v8";
 const ASSETS = [
   "./",
   "index.html",
@@ -19,12 +19,7 @@ const ASSETS = [
   "assets/seed/bottom-dark-jeans.jpg",
   "assets/seed/bottom-black-trousers.jpg",
   "assets/seed/bottom-denim-shorts.jpg",
-  "assets/seed/bottom-pink-leggings.jpg",
-  "assets/seed/shoes-brown-sandals.jpg",
-  "assets/seed/shoes-red-heels.jpg",
-  "assets/seed/shoes-white-heels.jpg",
-  "assets/seed/shoes-sneaker.jpg",
-  "assets/seed/shoes-boots.jpg"
+  "assets/seed/bottom-pink-leggings.jpg"
 ];
 
 self.addEventListener("install", (event) => {

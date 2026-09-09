@@ -28,10 +28,6 @@
         <h2>Bottoms</h2>
         <div class="item-grid" id="grid-bottom"></div>
       </div>
-      <div class="section-block" data-cat="shoes">
-        <h2>Shoes</h2>
-        <div class="item-grid" id="grid-shoes"></div>
-      </div>
       <div class="section-block" data-cat="other">
         <h2>Other</h2>
         <div class="item-grid" id="grid-other"></div>
@@ -52,7 +48,7 @@
         <div id="mannequin-svg-wrap"></div>
         <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
         <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
-        <div class="slot-layer" id="slot-shoes" data-cat="shoes"><span class="slot-label">Tap to add shoes</span></div>
+        <div class="slot-layer" id="slot-shoes" data-cat="shoes"><span class="slot-label">Tap to pick shoe color</span></div>
       </div>
 
       <p class="hint">Tap an empty slot to pick an item. Drag a placed item to reposition it, use the size handle to resize.</p>
@@ -115,7 +111,6 @@
     <select id="add-category">
       <option value="top">Top</option>
       <option value="bottom">Bottom</option>
-      <option value="shoes">Shoes</option>
       <option value="other">Other</option>
     </select>
     <label class="field-label">Name (optional)</label>
@@ -135,6 +130,19 @@
     <div class="modal-actions">
       <button id="picker-remove" class="danger-btn">Remove item</button>
       <button id="picker-cancel" class="ghost-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLOR PALETTE MODAL (shoes / accessories) -->
+<div id="color-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Shoes &amp; Accessories Color</h2>
+    <p class="photo-tip">Pick the color that best matches your shoes or accessories — no photo needed.</p>
+    <div class="color-swatch-grid" id="color-swatch-grid"></div>
+    <div class="modal-actions">
+      <button id="color-remove" class="danger-btn">Remove</button>
+      <button id="color-cancel" class="ghost-btn">Cancel</button>
     </div>
   </div>
 </div>

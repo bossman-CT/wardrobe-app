@@ -3,8 +3,34 @@ const DEFAULT_PLACEMENT = {
   bottom: { x: 27, y: 45, w: 46, h: 39, r: 0 },
   shoes: { x: 33, y: 79, w: 34, h: 11, r: 0 }
 };
-const CATEGORIES = ["top", "bottom", "shoes", "other"];
+const CATEGORIES = ["top", "bottom", "other"];
 const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
+
+// Shoes/accessories are picked as a color rather than photographed - a
+// small curated palette covers most real shoes without needing a photo.
+const SHOE_COLORS = [
+  "#1a1a1a", "#ffffff", "#8b5e3c", "#c9a06a", "#7b6a5c",
+  "#8c8c94", "#7c5cff", "#c0392b", "#d4788a", "#3d6b45",
+  "#d9a441", "#2f4a63"
+];
+
+function shoeShapeSVG(color) {
+  const fill = color || "#8c8c94";
+  const sheenId = "shoe-sheen-" + Math.random().toString(36).slice(2, 9);
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="${sheenId}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+        <stop offset="45%" stop-color="#ffffff" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="30" cy="58" rx="27" ry="20" fill="${fill}"/>
+    <ellipse cx="72" cy="58" rx="27" ry="20" fill="${fill}"/>
+    <ellipse cx="30" cy="58" rx="27" ry="20" fill="url(#${sheenId})" style="mix-blend-mode:overlay"/>
+    <ellipse cx="72" cy="58" rx="27" ry="20" fill="url(#${sheenId})" style="mix-blend-mode:overlay"/>
+  </svg>`;
+}
 
 // Where the mannequin's own shoulder line sits, in #mannequin-stage percent
 // coordinates - derived from the mannequin SVG geometry (shoulder span is
@@ -193,15 +219,16 @@ function renderAllSlots() {
 function renderSlot(cat) {
   const slot = $(`#slot-${cat}`);
   const placement = builder.placements[cat];
+  const pickerFn = cat === "shoes" ? openColorPicker : openPicker;
   slot.innerHTML = "";
   if (!placement) {
     slot.classList.add("empty");
     slot.classList.remove("filled");
     const label = document.createElement("span");
     label.className = "slot-label";
-    label.textContent = `Tap to add ${cat}`;
+    label.textContent = cat === "shoes" ? "Tap to pick shoe color" : `Tap to add ${cat}`;
     slot.appendChild(label);
-    slot.onclick = () => openPicker(cat);
+    slot.onclick = () => pickerFn(cat);
     slot.style.left = ""; slot.style.top = ""; slot.style.width = ""; slot.style.height = ""; slot.style.zIndex = "";
     resetSlotDefaultRect(slot, cat);
     return;
@@ -210,7 +237,6 @@ function renderSlot(cat) {
   slot.classList.add("filled");
   slot.onclick = null;
 
-  const item = itemsCache.find(i => i.id === placement.itemId);
   slot.style.left = placement.x + "%";
   slot.style.top = placement.y + "%";
   slot.style.width = placement.w + "%";
@@ -222,9 +248,17 @@ function renderSlot(cat) {
   wrap.className = "placed-item";
   wrap.dataset.cat = cat;
   wrap.style.transform = rotatable ? `rotate(${placement.r || 0}deg)` : "";
+
+  let content;
+  if (cat === "shoes") {
+    content = `<div class="shoe-shape">${shoeShapeSVG(placement.color)}</div>`;
+  } else {
+    const item = itemsCache.find(i => i.id === placement.itemId);
+    content = `<img src="${item ? item.image : ""}" alt="">`;
+  }
   wrap.innerHTML = `
     <button class="swap-handle">↻</button>
-    <img src="${item ? item.image : ""}" alt="">
+    ${content}
     ${rotatable ? '<div class="rotate-handle">⟳</div>' : ""}
     <div class="resize-handle"></div>
   `;
@@ -232,7 +266,7 @@ function renderSlot(cat) {
 
   wrap.querySelector(".swap-handle").addEventListener("click", (e) => {
     e.stopPropagation();
-    openPicker(cat);
+    pickerFn(cat);
   });
 
   makeDraggable(slot, wrap, cat, placement, rotatable);
@@ -425,6 +459,48 @@ $("#picker-remove").addEventListener("click", () => {
   closePicker();
 });
 
+// ---------- Color palette picker (shoes / accessories) ----------
+let colorTargetCat = null;
+function openColorPicker(cat) {
+  colorTargetCat = cat;
+  const grid = $("#color-swatch-grid");
+  grid.innerHTML = "";
+  const current = builder.placements[cat] && builder.placements[cat].color;
+  SHOE_COLORS.forEach(color => {
+    const btn = document.createElement("button");
+    btn.className = "color-swatch" + (color === current ? " selected" : "");
+    btn.style.background = color;
+    btn.addEventListener("click", () => {
+      const existing = builder.placements[cat];
+      builder.placements[cat] = {
+        color,
+        x: existing ? existing.x : DEFAULT_PLACEMENT[cat].x,
+        y: existing ? existing.y : DEFAULT_PLACEMENT[cat].y,
+        w: existing ? existing.w : DEFAULT_PLACEMENT[cat].w,
+        h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
+        r: existing ? (existing.r || 0) : 0
+      };
+      renderSlot(cat);
+      closeColorPicker();
+    });
+    grid.appendChild(btn);
+  });
+  $("#color-remove").style.display = builder.placements[cat] ? "block" : "none";
+  $("#color-modal").classList.add("open");
+}
+function closeColorPicker() {
+  $("#color-modal").classList.remove("open");
+  colorTargetCat = null;
+}
+$("#color-cancel").addEventListener("click", closeColorPicker);
+$("#color-remove").addEventListener("click", () => {
+  if (colorTargetCat) {
+    delete builder.placements[colorTargetCat];
+    renderSlot(colorTargetCat);
+  }
+  closeColorPicker();
+});
+
 // ---------- Save outfit ----------
 $("#save-outfit").addEventListener("click", () => {
   if (Object.keys(builder.placements).length === 0) {
@@ -486,7 +562,6 @@ function renderOutfitDeck() {
     stage.querySelector("svg").style.width = "auto";
 
     Object.entries(outfit.placements).forEach(([cat, p]) => {
-      const item = itemsCache.find(i => i.id === p.itemId);
       const div = document.createElement("div");
       div.className = "placed-item";
       div.dataset.cat = cat;
@@ -497,7 +572,12 @@ function renderOutfitDeck() {
       div.style.height = p.h + "%";
       div.style.zIndex = LAYER_ORDER[cat] || 0;
       div.style.transform = cat === "top" ? "" : `rotate(${p.r || 0}deg)`;
-      div.innerHTML = `<img src="${item ? item.image : ""}" alt="">`;
+      if (cat === "shoes") {
+        div.innerHTML = `<div class="shoe-shape">${shoeShapeSVG(p.color)}</div>`;
+      } else {
+        const item = itemsCache.find(i => i.id === p.itemId);
+        div.innerHTML = `<img src="${item ? item.image : ""}" alt="">`;
+      }
       stage.appendChild(div);
     });
 
