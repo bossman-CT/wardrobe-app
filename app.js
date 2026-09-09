@@ -214,7 +214,7 @@ function renderSlot(cat) {
     openPicker(cat);
   });
 
-  makeDraggable(slot, cat, placement);
+  makeDraggable(slot, wrap, cat, placement);
   makeResizable(wrap.querySelector(".resize-handle"), slot, cat, placement);
   makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
 }
@@ -227,27 +227,82 @@ function resetSlotDefaultRect(slot, cat) {
   slot.style.height = d.h + "%";
 }
 
-function makeDraggable(slot, cat, placement) {
-  let dragging = false, startX, startY, startLeft, startTop;
-  slot.onpointerdown = (e) => {
-    if (e.target.closest(".resize-handle") || e.target.closest(".swap-handle")) return;
-    dragging = true;
-    slot.setPointerCapture(e.pointerId);
-    startX = e.clientX; startY = e.clientY;
-    startLeft = placement.x; startTop = placement.y;
-  };
-  slot.onpointermove = (e) => {
-    if (!dragging) return;
-    const rect = $("#mannequin-stage").getBoundingClientRect();
-    const dxPct = (e.clientX - startX) / rect.width * 100;
-    const dyPct = (e.clientY - startY) / rect.height * 100;
-    placement.x = clamp(startLeft + dxPct, -5, 100 - placement.w + 5);
-    placement.y = clamp(startTop + dyPct, -5, 100 - placement.h + 5);
+const MAX_ITEM_SIZE = 85;
+
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function angleOf(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
+
+// Single finger drags the item; a second finger turns the gesture into a
+// pinch-to-resize + twist-to-rotate, like placing a sticker in a photo app.
+function makeDraggable(slot, wrap, cat, placement) {
+  const pointers = new Map();
+  let dragStart = null;
+  let pinchStart = null;
+
+  function applyRect() {
     slot.style.left = placement.x + "%";
     slot.style.top = placement.y + "%";
+    slot.style.width = placement.w + "%";
+    slot.style.height = placement.h + "%";
+  }
+
+  slot.onpointerdown = (e) => {
+    if (e.target.closest(".resize-handle") || e.target.closest(".rotate-handle") || e.target.closest(".swap-handle")) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { slot.setPointerCapture(e.pointerId); } catch (err) { /* ignore - not all browsers allow capturing every simultaneous touch */ }
+    if (pointers.size === 1) {
+      dragStart = { x: e.clientX, y: e.clientY, left: placement.x, top: placement.y };
+      pinchStart = null;
+    } else if (pointers.size === 2) {
+      const pts = [...pointers.values()];
+      pinchStart = {
+        dist: dist(pts[0], pts[1]),
+        angle: angleOf(pts[0], pts[1]),
+        w: placement.w, h: placement.h, r: placement.r || 0,
+        cx: placement.x + placement.w / 2, cy: placement.y + placement.h / 2
+      };
+      dragStart = null;
+    }
   };
-  slot.onpointerup = () => { dragging = false; };
-  slot.onpointercancel = () => { dragging = false; };
+
+  slot.onpointermove = (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const rect = $("#mannequin-stage").getBoundingClientRect();
+
+    if (pointers.size === 1 && dragStart) {
+      const dxPct = (e.clientX - dragStart.x) / rect.width * 100;
+      const dyPct = (e.clientY - dragStart.y) / rect.height * 100;
+      placement.x = clamp(dragStart.left + dxPct, -5, 100 - placement.w + 5);
+      placement.y = clamp(dragStart.top + dyPct, -5, 100 - placement.h + 5);
+      applyRect();
+    } else if (pointers.size === 2 && pinchStart) {
+      const pts = [...pointers.values()];
+      const scale = dist(pts[0], pts[1]) / pinchStart.dist;
+      placement.w = clamp(pinchStart.w * scale, 10, MAX_ITEM_SIZE);
+      placement.h = clamp(pinchStart.h * scale, 8, MAX_ITEM_SIZE);
+      placement.x = pinchStart.cx - placement.w / 2;
+      placement.y = pinchStart.cy - placement.h / 2;
+      const angle = angleOf(pts[0], pts[1]);
+      placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
+      applyRect();
+      wrap.style.transform = `rotate(${placement.r}deg)`;
+    }
+  };
+
+  function release(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size === 1) {
+      const [pos] = pointers.values();
+      dragStart = { x: pos.x, y: pos.y, left: placement.x, top: placement.y };
+      pinchStart = null;
+    } else if (pointers.size === 0) {
+      dragStart = null;
+      pinchStart = null;
+    }
+  }
+  slot.onpointerup = release;
+  slot.onpointercancel = release;
 }
 
 function makeResizable(handle, slot, cat, placement) {
@@ -264,8 +319,8 @@ function makeResizable(handle, slot, cat, placement) {
     const rect = $("#mannequin-stage").getBoundingClientRect();
     const dxPct = (e.clientX - startX) / rect.width * 100;
     const dyPct = (e.clientY - startY) / rect.height * 100;
-    placement.w = clamp(startW + dxPct, 10, 100);
-    placement.h = clamp(startH + dyPct, 8, 100);
+    placement.w = clamp(startW + dxPct, 10, MAX_ITEM_SIZE);
+    placement.h = clamp(startH + dyPct, 8, MAX_ITEM_SIZE);
     slot.style.width = placement.w + "%";
     slot.style.height = placement.h + "%";
   };
