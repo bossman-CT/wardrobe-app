@@ -85,6 +85,19 @@ function removeBackground(img, { tolerance = 30, maxDim = 900 } = {}) {
       tryAdd(x, y + 1);
     }
 
+    // Average color over the surviving (non-background) pixels — the
+    // "best guess" swatch used for the stylized garment silhouette.
+    let sumR = 0, sumG = 0, sumB = 0, fgCount = 0;
+    for (let i = 0; i < n; i++) {
+      if (visited[i]) continue;
+      const di = i * 4;
+      sumR += data[di]; sumG += data[di + 1]; sumB += data[di + 2];
+      fgCount++;
+    }
+    const dominantColor = fgCount
+      ? `rgb(${Math.round(sumR / fgCount)}, ${Math.round(sumG / fgCount)}, ${Math.round(sumB / fgCount)})`
+      : "rgb(200, 197, 214)";
+
     let alpha = new Float32Array(n);
     for (let i = 0; i < n; i++) alpha[i] = visited[i] ? 0 : 255;
 
@@ -110,6 +123,6 @@ function removeBackground(img, { tolerance = 30, maxDim = 900 } = {}) {
 
     for (let i = 0; i < n; i++) data[i * 4 + 3] = Math.round(alpha[i]);
     ctx.putImageData(imageData, 0, 0);
-    resolve(canvas.toDataURL("image/png"));
+    resolve({ dataUrl: canvas.toDataURL("image/png"), color: dominantColor });
   });
 }

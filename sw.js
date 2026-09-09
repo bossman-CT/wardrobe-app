@@ -1,4 +1,4 @@
-const CACHE = "wardrobe-v3";
+const CACHE = "wardrobe-v5";
 const ASSETS = [
   "./",
   "index.html",
@@ -6,6 +6,7 @@ const ASSETS = [
   "app.js",
   "db.js",
   "mannequins.js",
+  "garment-shapes.js",
   "seed-data.js",
   "bg-remove.js",
   "manifest.json",

@@ -129,13 +129,17 @@ $("#add-save").addEventListener("click", async () => {
   $("#add-save").disabled = true;
   $("#add-save").textContent = "Processing...";
   let image = pendingImage;
+  let color = "rgb(200, 197, 214)";
   try {
     const img = await loadImageFromSrc(pendingImage);
-    image = await removeBackground(img);
+    const processed = await removeBackground(img);
+    image = processed.dataUrl;
+    color = processed.color;
   } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
     image,
+    color,
     category: $("#add-category").value,
     name: $("#add-name").value.trim(),
     createdAt: Date.now()
@@ -200,7 +204,7 @@ function renderSlot(cat) {
   wrap.dataset.cat = cat;
   wrap.innerHTML = `
     <button class="swap-handle">↻</button>
-    <img src="${item ? item.image : ""}" alt="">
+    <div class="garment-shape">${renderGarmentSVG(cat, item && item.color)}</div>
     <div class="resize-handle"></div>
   `;
   slot.appendChild(wrap);
@@ -382,7 +386,7 @@ function renderOutfitDeck() {
       div.style.top = p.y + "%";
       div.style.width = p.w + "%";
       div.style.height = p.h + "%";
-      div.innerHTML = `<img src="${item ? item.image : ""}" alt="">`;
+      div.innerHTML = `<div class="garment-shape">${renderGarmentSVG(cat, item && item.color)}</div>`;
       stage.appendChild(div);
     });
 
@@ -454,11 +458,14 @@ async function seedIfEmpty() {
   if (existing.length > 0) return;
   for (const it of SEED_ITEMS) {
     let image = it.image;
+    let color = "rgb(200, 197, 214)";
     try {
       const img = await loadImageFromSrc(it.image);
-      image = await removeBackground(img);
+      const processed = await removeBackground(img);
+      image = processed.dataUrl;
+      color = processed.color;
     } catch (e) { /* fall back to the original photo if processing fails */ }
-    await DB.addItem({ id: uid(), image, category: it.category, name: it.name, createdAt: Date.now() });
+    await DB.addItem({ id: uid(), image, color, category: it.category, name: it.name, createdAt: Date.now() });
   }
 }
 

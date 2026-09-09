@@ -228,14 +228,16 @@ html, body {
   touch-action: none;
   cursor: grab;
 }
-.placed-item img {
+.garment-shape {
   width: 100%;
   height: 100%;
-  object-fit: contain;
   pointer-events: none;
-  filter: drop-shadow(0 4px 8px rgba(20,15,10,0.35));
-  mask-image: radial-gradient(ellipse 72% 72% at center, black 50%, transparent 98%);
-  -webkit-mask-image: radial-gradient(ellipse 72% 72% at center, black 50%, transparent 98%);
+  filter: drop-shadow(0 4px 7px rgba(20,15,10,0.3));
+}
+.garment-shape svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .resize-handle {
   position: absolute;
