@@ -789,36 +789,20 @@ $("#backdrop-toggle").addEventListener("click", openBackdropPicker);
 $("#backdrop-cancel").addEventListener("click", closeBackdropPicker);
 
 // ---------- Init ----------
-async function seedIfEmpty() {
-  if (new URLSearchParams(location.search).get("reset") === "1") {
-    const existingItems = await DB.getAllItems();
-    for (const it of existingItems) await DB.deleteItem(it.id);
-    const existingOutfits = await DB.getAllOutfits();
-    for (const o of existingOutfits) await DB.deleteOutfit(o.id);
-    history.replaceState(null, "", location.pathname);
-  }
-  const existing = await DB.getAllItems();
-  if (existing.length > 0) return;
-  for (const it of SEED_ITEMS) {
-    let image = it.image;
-    let shoulder = null;
-    let color = null;
-    try {
-      const img = await loadImageFromSrc(it.image);
-      const processed = await removeBackground(img);
-      image = processed.dataUrl;
-      shoulder = processed.shoulder;
-      color = processed.color;
-    } catch (e) { /* fall back to the original photo if processing fails */ }
-    await DB.addItem({ id: uid(), image, shoulder, color, category: it.category, name: it.name, createdAt: Date.now() });
-  }
+async function handleResetParam() {
+  if (new URLSearchParams(location.search).get("reset") !== "1") return;
+  const existingItems = await DB.getAllItems();
+  for (const it of existingItems) await DB.deleteItem(it.id);
+  const existingOutfits = await DB.getAllOutfits();
+  for (const o of existingOutfits) await DB.deleteOutfit(o.id);
+  history.replaceState(null, "", location.pathname);
 }
 
 async function init() {
   initTheme();
   renderMannequinBase();
   renderAllSlots();
-  await seedIfEmpty();
+  await handleResetParam();
   await loadItems();
   await loadOutfits();
   if ("serviceWorker" in navigator) {

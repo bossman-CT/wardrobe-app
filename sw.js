@@ -1,26 +1,15 @@
-const CACHE = "wardrobe-v12";
+const CACHE = "wardrobe-v13";
 const ASSETS = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
   "db.js",
-  "seed-data.js",
   "bg-remove.js",
   "manifest.json",
   "assets/icon.svg",
   "assets/mannequin/female-cutout.png",
-  "assets/mannequin/male-cutout.png",
-  "assets/seed/top-white-tee.jpg",
-  "assets/seed/top-pink-tee.jpg",
-  "assets/seed/top-black-tee.jpg",
-  "assets/seed/top-beige-blouse.jpg",
-  "assets/seed/top-green-shirt.jpg",
-  "assets/seed/bottom-blue-jeans.jpg",
-  "assets/seed/bottom-dark-jeans.jpg",
-  "assets/seed/bottom-black-trousers.jpg",
-  "assets/seed/bottom-denim-shorts.jpg",
-  "assets/seed/bottom-pink-leggings.jpg"
+  "assets/mannequin/male-cutout.png"
 ];
 
 self.addEventListener("install", (event) => {
