@@ -443,6 +443,13 @@ $("#deck-edit").addEventListener("click", () => {
 
 // ---------- Init ----------
 async function seedIfEmpty() {
+  if (new URLSearchParams(location.search).get("reset") === "1") {
+    const existingItems = await DB.getAllItems();
+    for (const it of existingItems) await DB.deleteItem(it.id);
+    const existingOutfits = await DB.getAllOutfits();
+    for (const o of existingOutfits) await DB.deleteOutfit(o.id);
+    history.replaceState(null, "", location.pathname);
+  }
   const existing = await DB.getAllItems();
   if (existing.length > 0) return;
   for (const it of SEED_ITEMS) {
