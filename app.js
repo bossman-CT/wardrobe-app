@@ -636,6 +636,32 @@ $("#deck-edit").addEventListener("click", () => {
   switchView("builder");
 });
 
+// ---------- Theme ----------
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  const isDark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  $("#theme-toggle").textContent = isDark ? "☀️" : "🌙";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", isDark ? "#1e1c2c" : "#7c5cff");
+}
+
+function initTheme() {
+  let stored = null;
+  try { stored = localStorage.getItem("wardrobe-theme"); } catch (e) { /* private browsing, etc. */ }
+  applyTheme(stored);
+  $("#theme-toggle").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme");
+    const isDark = current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const next = isDark ? "light" : "dark";
+    try { localStorage.setItem("wardrobe-theme", next); } catch (e) { /* ignore */ }
+    applyTheme(next);
+  });
+}
+
 // ---------- Init ----------
 async function seedIfEmpty() {
   if (new URLSearchParams(location.search).get("reset") === "1") {
@@ -661,6 +687,7 @@ async function seedIfEmpty() {
 }
 
 async function init() {
+  initTheme();
   renderMannequinBase();
   renderAllSlots();
   await seedIfEmpty();

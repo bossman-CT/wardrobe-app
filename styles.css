@@ -6,9 +6,46 @@
   --text: #201f2b;
   --text-dim: #75718c;
   --danger: #e5484d;
+  --danger-bg: #fdeceb;
+  --danger-border: #f6c9c8;
   --border: #e7e5f2;
+  --input-bg: #ffffff;
+  --empty-slot-border: #d8d4ee;
+  --photo-surface: #ffffff;
   --radius: 14px;
   color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #9179ff;
+    --accent-dark: #7c5cff;
+    --bg: #131220;
+    --card-bg: #1e1c2c;
+    --text: #f1eefa;
+    --text-dim: #a49dc7;
+    --danger: #ff7a7e;
+    --danger-bg: #3a2226;
+    --danger-border: #5c2f34;
+    --border: #34314a;
+    --input-bg: #26243a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --accent: #9179ff;
+  --accent-dark: #7c5cff;
+  --bg: #131220;
+  --card-bg: #1e1c2c;
+  --text: #f1eefa;
+  --text-dim: #a49dc7;
+  --danger: #ff7a7e;
+  --danger-bg: #3a2226;
+  --danger-border: #5c2f34;
+  --border: #34314a;
+  --input-bg: #26243a;
+  --empty-slot-border: #423e5e;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -33,11 +70,24 @@ html, body {
 }
 
 .topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: env(safe-area-inset-top, 16px) 20px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--card-bg);
 }
 .topbar h1 { margin: 0; font-size: 20px; font-weight: 700; }
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
 
 #views {
   flex: 1;
@@ -65,7 +115,7 @@ html, body {
 
 .item-card {
   position: relative;
-  background: var(--card-bg);
+  background: var(--photo-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -180,7 +230,7 @@ html, body {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 5;
-  background: var(--card-bg);
+  background: var(--photo-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -205,8 +255,8 @@ html, body {
   border: 2px dashed transparent;
 }
 .slot-layer.empty {
-  border-color: #d8d4ee;
-  background: rgba(124,92,255,0.05);
+  border-color: var(--empty-slot-border);
+  background: rgba(124,92,255,0.08);
   cursor: pointer;
 }
 .slot-label {
@@ -311,7 +361,7 @@ html, body {
 .outfit-card {
   position: absolute;
   inset: 0;
-  background: var(--card-bg);
+  background: var(--photo-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   display: none;
@@ -375,9 +425,9 @@ html, body {
   border: 1px solid var(--border);
 }
 .danger-btn {
-  background: #fdeceb;
+  background: var(--danger-bg);
   color: var(--danger);
-  border: 1px solid #f6c9c8;
+  border: 1px solid var(--danger-border);
 }
 
 /* Modals */
@@ -450,7 +500,8 @@ select, input[type="text"] {
   border-radius: 10px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--text);
 }
 
 .modal-actions {
@@ -477,11 +528,11 @@ select, input[type="text"] {
   border-radius: 50%;
   border: 2px solid var(--border);
   padding: 0;
-  box-shadow: inset 0 0 0 2px #fff;
+  box-shadow: inset 0 0 0 2px var(--card-bg);
 }
 .color-swatch.selected {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--card-bg), 0 0 0 2px var(--accent);
 }
 
 .shoe-shape {
