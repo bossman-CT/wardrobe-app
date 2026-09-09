@@ -1,9 +1,10 @@
 const DEFAULT_PLACEMENT = {
-  top: { x: 26, y: 17, w: 48, h: 29 },
-  bottom: { x: 27, y: 45, w: 46, h: 39 },
-  shoes: { x: 33, y: 79, w: 34, h: 11 }
+  top: { x: 26, y: 17, w: 48, h: 29, r: 0 },
+  bottom: { x: 27, y: 45, w: 46, h: 39, r: 0 },
+  shoes: { x: 33, y: 79, w: 34, h: 11, r: 0 }
 };
 const CATEGORIES = ["top", "bottom", "shoes", "other"];
+const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
 
 let mannequinInstanceCounter = 0;
 function instantiateMannequin(gender) {
@@ -181,7 +182,7 @@ function renderSlot(cat) {
     label.textContent = `Tap to add ${cat}`;
     slot.appendChild(label);
     slot.onclick = () => openPicker(cat);
-    slot.style.left = ""; slot.style.top = ""; slot.style.width = ""; slot.style.height = "";
+    slot.style.left = ""; slot.style.top = ""; slot.style.width = ""; slot.style.height = ""; slot.style.zIndex = "";
     resetSlotDefaultRect(slot, cat);
     return;
   }
@@ -194,13 +195,16 @@ function renderSlot(cat) {
   slot.style.top = placement.y + "%";
   slot.style.width = placement.w + "%";
   slot.style.height = placement.h + "%";
+  slot.style.zIndex = LAYER_ORDER[cat] || 0;
 
   const wrap = document.createElement("div");
   wrap.className = "placed-item";
   wrap.dataset.cat = cat;
+  wrap.style.transform = `rotate(${placement.r || 0}deg)`;
   wrap.innerHTML = `
     <button class="swap-handle">↻</button>
     <img src="${item ? item.image : ""}" alt="">
+    <div class="rotate-handle">⟳</div>
     <div class="resize-handle"></div>
   `;
   slot.appendChild(wrap);
@@ -212,6 +216,7 @@ function renderSlot(cat) {
 
   makeDraggable(slot, cat, placement);
   makeResizable(wrap.querySelector(".resize-handle"), slot, cat, placement);
+  makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
 }
 
 function resetSlotDefaultRect(slot, cat) {
@@ -268,6 +273,29 @@ function makeResizable(handle, slot, cat, placement) {
   handle.onpointercancel = () => { resizing = false; };
 }
 
+function makeRotatable(handle, wrap, placement) {
+  let rotating = false, centerX, centerY, startAngle, startR;
+  handle.onpointerdown = (e) => {
+    e.stopPropagation();
+    rotating = true;
+    handle.setPointerCapture(e.pointerId);
+    const rect = wrap.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+    startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+    startR = placement.r || 0;
+  };
+  handle.onpointermove = (e) => {
+    if (!rotating) return;
+    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+    const deltaDeg = (angle - startAngle) * 180 / Math.PI;
+    placement.r = Math.round(startR + deltaDeg);
+    wrap.style.transform = `rotate(${placement.r}deg)`;
+  };
+  handle.onpointerup = (e) => { e.stopPropagation(); rotating = false; };
+  handle.onpointercancel = () => { rotating = false; };
+}
+
 // ---------- Picker modal ----------
 function openPicker(cat) {
   pickerTargetCat = cat;
@@ -288,7 +316,8 @@ function openPicker(cat) {
             x: existing ? existing.x : DEFAULT_PLACEMENT[cat].x,
             y: existing ? existing.y : DEFAULT_PLACEMENT[cat].y,
             w: existing ? existing.w : DEFAULT_PLACEMENT[cat].w,
-            h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h
+            h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
+            r: existing ? (existing.r || 0) : 0
           };
           renderSlot(cat);
           closePicker();
@@ -382,6 +411,8 @@ function renderOutfitDeck() {
       div.style.top = p.y + "%";
       div.style.width = p.w + "%";
       div.style.height = p.h + "%";
+      div.style.zIndex = LAYER_ORDER[cat] || 0;
+      div.style.transform = `rotate(${p.r || 0}deg)`;
       div.innerHTML = `<img src="${item ? item.image : ""}" alt="">`;
       stage.appendChild(div);
     });
