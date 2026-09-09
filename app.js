@@ -57,6 +57,7 @@ function shoeShapeSVG(color) {
 }
 
 function autoTopPlacement(item, gender) {
+  if (gender === "none") return { ...DEFAULT_PLACEMENT.top };
   const s = item && item.shoulder;
   const shoulder = MANNEQUIN_SHOULDER[gender] || MANNEQUIN_SHOULDER.female;
   if (!s || !s.widthFrac) return { ...DEFAULT_PLACEMENT.top };
@@ -200,16 +201,19 @@ $("#add-save").addEventListener("click", async () => {
   $("#add-save").textContent = "Processing...";
   let image = pendingImage;
   let shoulder = null;
+  let color = null;
   try {
     const img = await loadImageFromSrc(pendingImage);
     const processed = await removeBackground(img);
     image = processed.dataUrl;
     shoulder = processed.shoulder;
+    color = processed.color;
   } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
     image,
     shoulder,
+    color,
     category: $("#add-category").value,
     name: $("#add-name").value.trim(),
     createdAt: Date.now()
@@ -236,7 +240,14 @@ $("#clear-builder").addEventListener("click", () => {
 });
 
 function renderMannequinBase() {
-  $("#mannequin-photo").src = MANNEQUIN_PHOTO[builder.gender];
+  const photo = $("#mannequin-photo");
+  if (builder.gender === "none") {
+    photo.hidden = true;
+    photo.removeAttribute("src");
+  } else {
+    photo.hidden = false;
+    photo.src = MANNEQUIN_PHOTO[builder.gender];
+  }
   $("#mannequin-backdrop").style.background = getBackdrop();
 }
 
@@ -259,6 +270,7 @@ function renderSlot(cat) {
     slot.onclick = () => pickerFn(cat);
     slot.style.left = ""; slot.style.top = ""; slot.style.width = ""; slot.style.height = ""; slot.style.zIndex = "";
     resetSlotDefaultRect(slot, cat);
+    syncSizeSlider(cat);
     return;
   }
   slot.classList.remove("empty");
@@ -270,6 +282,7 @@ function renderSlot(cat) {
   slot.style.width = placement.w + "%";
   slot.style.height = placement.h + "%";
   slot.style.zIndex = LAYER_ORDER[cat] || 0;
+  syncSizeSlider(cat);
 
   const rotatable = cat !== "top";
   const wrap = document.createElement("div");
@@ -285,22 +298,45 @@ function renderSlot(cat) {
     content = `<img src="${item ? item.image : ""}" alt="">`;
   }
   wrap.innerHTML = `
-    <button class="swap-handle">↻</button>
     ${content}
     ${rotatable ? '<div class="rotate-handle">⟳</div>' : ""}
-    <div class="resize-handle"></div>
   `;
   slot.appendChild(wrap);
 
-  wrap.querySelector(".swap-handle").addEventListener("click", (e) => {
-    e.stopPropagation();
-    pickerFn(cat);
-  });
-
   makeDraggable(slot, wrap, cat, placement, rotatable);
-  makeResizable(wrap.querySelector(".resize-handle"), slot, cat, placement);
   if (rotatable) makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
 }
+
+function syncSizeSlider(cat) {
+  const slider = $(`#${cat}-size-slider`);
+  if (!slider) return;
+  const placement = builder.placements[cat];
+  if (!placement) {
+    slider.disabled = true;
+    return;
+  }
+  slider.disabled = false;
+  slider.value = Math.round(placement.w);
+}
+
+function applySliderResize(cat, newSize) {
+  const placement = builder.placements[cat];
+  if (!placement) return;
+  const ratio = placement.h / placement.w;
+  const cx = placement.x + placement.w / 2, cy = placement.y + placement.h / 2;
+  const w = clamp(newSize, 20, MAX_ITEM_SIZE);
+  const h = clamp(w * ratio, 8, MAX_ITEM_SIZE);
+  placement.w = w;
+  placement.h = h;
+  placement.x = cx - w / 2;
+  placement.y = cy - h / 2;
+  renderSlot(cat);
+}
+
+$("#top-size-slider").addEventListener("input", (e) => applySliderResize("top", Number(e.target.value)));
+$("#bottom-size-slider").addEventListener("input", (e) => applySliderResize("bottom", Number(e.target.value)));
+$("#change-top-btn").addEventListener("click", () => openPicker("top"));
+$("#change-bottom-btn").addEventListener("click", () => openPicker("bottom"));
 
 function resetSlotDefaultRect(slot, cat) {
   const d = DEFAULT_PLACEMENT[cat];
@@ -312,11 +348,10 @@ function resetSlotDefaultRect(slot, cat) {
 
 const MAX_ITEM_SIZE = 85;
 
-function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function angleOf(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
 
-// Single finger drags the item; a second finger turns the gesture into a
-// pinch-to-resize + twist-to-rotate, like placing a sticker in a photo app.
+// Single finger drags the item; with a rotatable item, a second finger
+// twists it in place (rotation only - size is controlled by the side sliders).
 function makeDraggable(slot, wrap, cat, placement, rotatable) {
   const pointers = new Map();
   let dragStart = null;
@@ -330,7 +365,7 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
   }
 
   slot.onpointerdown = (e) => {
-    if (e.target.closest(".resize-handle") || e.target.closest(".rotate-handle") || e.target.closest(".swap-handle")) return;
+    if (e.target.closest(".rotate-handle")) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { slot.setPointerCapture(e.pointerId); } catch (err) { /* ignore - not all browsers allow capturing every simultaneous touch */ }
     if (pointers.size === 1) {
@@ -338,12 +373,7 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
       pinchStart = null;
     } else if (pointers.size === 2) {
       const pts = [...pointers.values()];
-      pinchStart = {
-        dist: dist(pts[0], pts[1]),
-        angle: angleOf(pts[0], pts[1]),
-        w: placement.w, h: placement.h, r: placement.r || 0,
-        cx: placement.x + placement.w / 2, cy: placement.y + placement.h / 2
-      };
+      pinchStart = { angle: angleOf(pts[0], pts[1]), r: placement.r || 0 };
       dragStart = null;
     }
   };
@@ -359,19 +389,11 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
       placement.x = clamp(dragStart.left + dxPct, -5, 100 - placement.w + 5);
       placement.y = clamp(dragStart.top + dyPct, -5, 100 - placement.h + 5);
       applyRect();
-    } else if (pointers.size === 2 && pinchStart) {
+    } else if (pointers.size === 2 && pinchStart && rotatable) {
       const pts = [...pointers.values()];
-      const scale = dist(pts[0], pts[1]) / pinchStart.dist;
-      placement.w = clamp(pinchStart.w * scale, 10, MAX_ITEM_SIZE);
-      placement.h = clamp(pinchStart.h * scale, 8, MAX_ITEM_SIZE);
-      placement.x = pinchStart.cx - placement.w / 2;
-      placement.y = pinchStart.cy - placement.h / 2;
-      applyRect();
-      if (rotatable) {
-        const angle = angleOf(pts[0], pts[1]);
-        placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
-        wrap.style.transform = `rotate(${placement.r}deg)`;
-      }
+      const angle = angleOf(pts[0], pts[1]);
+      placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
+      wrap.style.transform = `rotate(${placement.r}deg)`;
     }
   };
 
@@ -388,29 +410,6 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
   }
   slot.onpointerup = release;
   slot.onpointercancel = release;
-}
-
-function makeResizable(handle, slot, cat, placement) {
-  let resizing = false, startX, startY, startW, startH;
-  handle.onpointerdown = (e) => {
-    e.stopPropagation();
-    resizing = true;
-    handle.setPointerCapture(e.pointerId);
-    startX = e.clientX; startY = e.clientY;
-    startW = placement.w; startH = placement.h;
-  };
-  handle.onpointermove = (e) => {
-    if (!resizing) return;
-    const rect = $("#mannequin-stage").getBoundingClientRect();
-    const dxPct = (e.clientX - startX) / rect.width * 100;
-    const dyPct = (e.clientY - startY) / rect.height * 100;
-    placement.w = clamp(startW + dxPct, 10, MAX_ITEM_SIZE);
-    placement.h = clamp(startH + dyPct, 8, MAX_ITEM_SIZE);
-    slot.style.width = placement.w + "%";
-    slot.style.height = placement.h + "%";
-  };
-  handle.onpointerup = (e) => { e.stopPropagation(); resizing = false; };
-  handle.onpointercancel = () => { resizing = false; };
 }
 
 function makeRotatable(handle, wrap, placement) {
@@ -529,6 +528,65 @@ $("#color-remove").addEventListener("click", () => {
   closeColorPicker();
 });
 
+// ---------- Random outfit (color matching) ----------
+function parseRgb(str) {
+  const m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(str || "");
+  return m ? { r: +m[1], g: +m[2], b: +m[3] } : null;
+}
+function rgbToHsl({ r, g, b }) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return { h, s, l };
+}
+function isNeutral(hsl) { return hsl.s < 0.18 || hsl.l < 0.14 || hsl.l > 0.92; }
+function hueDist(a, b) { const d = Math.abs(a - b); return Math.min(d, 360 - d); }
+function colorsWork(colorA, colorB) {
+  const rgbA = parseRgb(colorA), rgbB = parseRgb(colorB);
+  if (!rgbA || !rgbB) return true; // no data - don't block the pairing
+  const a = rgbToHsl(rgbA), b = rgbToHsl(rgbB);
+  if (isNeutral(a) || isNeutral(b)) return true; // neutrals pair with anything
+  const d = hueDist(a.h, b.h);
+  return d <= 40 || d >= 140; // analogous or complementary-ish
+}
+
+let lastShuffleKey = null;
+function shuffleOutfit() {
+  const tops = itemsCache.filter(i => i.category === "top");
+  const bottoms = itemsCache.filter(i => i.category === "bottom");
+  if (!tops.length || !bottoms.length) {
+    alert("Add at least one top and one bottom to your closet first.");
+    return;
+  }
+  const pairs = [];
+  for (const t of tops) {
+    for (const b of bottoms) pairs.push({ t, b, good: colorsWork(t.color, b.color) });
+  }
+  const goodPairs = pairs.filter(p => p.good);
+  const pool = goodPairs.length ? goodPairs : pairs;
+  let pick;
+  for (let i = 0; i < 6; i++) {
+    pick = pool[Math.floor(Math.random() * pool.length)];
+    const key = pick.t.id + ":" + pick.b.id;
+    if (key !== lastShuffleKey || pool.length === 1) { lastShuffleKey = key; break; }
+  }
+  builder.placements.top = { itemId: pick.t.id, ...autoTopPlacement(pick.t, builder.gender) };
+  builder.placements.bottom = { itemId: pick.b.id, ...DEFAULT_PLACEMENT.bottom };
+  renderAllSlots();
+}
+$("#shuffle-outfit").addEventListener("click", shuffleOutfit);
+
 // ---------- Save outfit ----------
 $("#save-outfit").addEventListener("click", () => {
   if (Object.keys(builder.placements).length === 0) {
@@ -587,7 +645,7 @@ function renderOutfitDeck() {
     stage.className = "outfit-stage";
     stage.innerHTML = `
       <div class="mannequin-backdrop" style="background:${getBackdrop()}"></div>
-      <img class="mannequin-photo" src="${MANNEQUIN_PHOTO[outfit.gender]}" alt="">
+      ${outfit.gender !== "none" ? `<img class="mannequin-photo" src="${MANNEQUIN_PHOTO[outfit.gender]}" alt="">` : ""}
     `;
 
     Object.entries(outfit.placements).forEach(([cat, p]) => {
@@ -744,13 +802,15 @@ async function seedIfEmpty() {
   for (const it of SEED_ITEMS) {
     let image = it.image;
     let shoulder = null;
+    let color = null;
     try {
       const img = await loadImageFromSrc(it.image);
       const processed = await removeBackground(img);
       image = processed.dataUrl;
       shoulder = processed.shoulder;
+      color = processed.color;
     } catch (e) { /* fall back to the original photo if processing fails */ }
-    await DB.addItem({ id: uid(), image, shoulder, category: it.category, name: it.name, createdAt: Date.now() });
+    await DB.addItem({ id: uid(), image, shoulder, color, category: it.category, name: it.name, createdAt: Date.now() });
   }
 }
 

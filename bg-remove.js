@@ -118,6 +118,19 @@ function removeBackground(img, { localTolerance = 26, seedTolerance = 55, global
       imgAspect: ch / cw
     } : null;
 
+    // Average color over the foreground pixels - a "best guess" swatch
+    // used to bias outfit color-matching, not for rendering.
+    let sumR = 0, sumG = 0, sumB = 0, fgCount = 0;
+    for (let i = 0; i < n; i++) {
+      if (visited[i]) continue;
+      const di = i * 4;
+      sumR += data[di]; sumG += data[di + 1]; sumB += data[di + 2];
+      fgCount++;
+    }
+    const color = fgCount
+      ? `rgb(${Math.round(sumR / fgCount)}, ${Math.round(sumG / fgCount)}, ${Math.round(sumB / fgCount)})`
+      : null;
+
     let alpha = new Float32Array(n);
     for (let i = 0; i < n; i++) alpha[i] = visited[i] ? 0 : 255;
 
@@ -143,6 +156,6 @@ function removeBackground(img, { localTolerance = 26, seedTolerance = 55, global
 
     for (let i = 0; i < n; i++) data[i * 4 + 3] = Math.round(alpha[i]);
     ctx.putImageData(imageData, 0, 0);
-    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder });
+    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder, color });
   });
 }
