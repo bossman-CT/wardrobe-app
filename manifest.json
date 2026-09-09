@@ -1,0 +1,14 @@
+{
+  "name": "Wardrobe",
+  "short_name": "Wardrobe",
+  "description": "Virtual closet and outfit builder",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f6f5fb",
+  "theme_color": "#7c5cff",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Wardrobe</title>
+<meta name="theme-color" content="#7c5cff" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="assets/icon.svg" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <h1>Wardrobe</h1>
+  </header>
+
+  <main id="views">
+
+    <!-- CLOSET VIEW -->
+    <section id="view-closet" class="view active">
+      <div class="section-block" data-cat="top">
+        <h2>Tops</h2>
+        <div class="item-grid" id="grid-top"></div>
+      </div>
+      <div class="section-block" data-cat="bottom">
+        <h2>Bottoms</h2>
+        <div class="item-grid" id="grid-bottom"></div>
+      </div>
+      <div class="section-block" data-cat="shoes">
+        <h2>Shoes</h2>
+        <div class="item-grid" id="grid-shoes"></div>
+      </div>
+      <div class="section-block" data-cat="other">
+        <h2>Other</h2>
+        <div class="item-grid" id="grid-other"></div>
+      </div>
+    </section>
+
+    <!-- BUILDER VIEW -->
+    <section id="view-builder" class="view">
+      <div class="builder-toolbar">
+        <div class="gender-toggle">
+          <button class="gender-btn active" data-gender="female">Female</button>
+          <button class="gender-btn" data-gender="male">Male</button>
+        </div>
+        <button id="clear-builder" class="ghost-btn">Clear</button>
+      </div>
+
+      <div class="mannequin-stage" id="mannequin-stage">
+        <div id="mannequin-svg-wrap"></div>
+        <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
+        <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
+        <div class="slot-layer" id="slot-shoes" data-cat="shoes"><span class="slot-label">Tap to add shoes</span></div>
+      </div>
+
+      <p class="hint">Tap an empty slot to pick an item. Drag a placed item to reposition it, use the size handle to resize.</p>
+
+      <button id="save-outfit" class="primary-btn">Save Outfit</button>
+    </section>
+
+    <!-- OUTFITS VIEW -->
+    <section id="view-outfits" class="view">
+      <div id="outfits-empty" class="empty-state">
+        <p>No saved outfits yet. Build one in the Builder tab.</p>
+      </div>
+      <div id="outfit-deck" class="outfit-deck"></div>
+      <div class="deck-controls">
+        <button id="deck-prev" class="ghost-btn">&larr; Prev</button>
+        <span id="deck-position"></span>
+        <button id="deck-next" class="ghost-btn">Next &rarr;</button>
+      </div>
+      <div class="deck-actions">
+        <button id="deck-edit" class="ghost-btn">Edit</button>
+        <button id="deck-delete" class="danger-btn">Delete</button>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-view="closet">
+      <span>Closet</span>
+    </button>
+    <button class="tab-btn" data-view="builder">
+      <span>Builder</span>
+    </button>
+    <button class="tab-btn" data-view="outfits">
+      <span>Outfits</span>
+    </button>
+  </nav>
+
+  <button id="fab-add" class="fab" title="Add clothing">+</button>
+
+</div>
+
+<!-- ADD ITEM MODAL -->
+<div id="add-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Add Clothing</h2>
+    <div class="photo-input-row">
+      <label class="photo-btn">
+        Take Photo
+        <input type="file" accept="image/*" capture="environment" id="input-camera" hidden />
+      </label>
+      <label class="photo-btn">
+        Choose Photo
+        <input type="file" accept="image/*" id="input-file" hidden />
+      </label>
+    </div>
+    <img id="add-preview" class="add-preview" hidden />
+    <label class="field-label">Category</label>
+    <select id="add-category">
+      <option value="top">Top</option>
+      <option value="bottom">Bottom</option>
+      <option value="shoes">Shoes</option>
+      <option value="other">Other</option>
+    </select>
+    <label class="field-label">Name (optional)</label>
+    <input type="text" id="add-name" placeholder="e.g. Blue denim jacket" />
+    <div class="modal-actions">
+      <button id="add-cancel" class="ghost-btn">Cancel</button>
+      <button id="add-save" class="primary-btn" disabled>Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ITEM PICKER MODAL -->
+<div id="picker-modal" class="modal-overlay">
+  <div class="modal">
+    <h2 id="picker-title">Choose item</h2>
+    <div class="item-grid" id="picker-grid"></div>
+    <div class="modal-actions">
+      <button id="picker-remove" class="danger-btn">Remove item</button>
+      <button id="picker-cancel" class="ghost-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- OUTFIT NAME MODAL -->
+<div id="name-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Save Outfit</h2>
+    <label class="field-label">Outfit name</label>
+    <input type="text" id="outfit-name-input" placeholder="e.g. Friday brunch" />
+    <div class="modal-actions">
+      <button id="name-cancel" class="ghost-btn">Cancel</button>
+      <button id="name-save" class="primary-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="mannequins.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
