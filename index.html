@@ -38,11 +38,15 @@
           <button class="gender-btn active" data-gender="female">Female</button>
           <button class="gender-btn" data-gender="male">Male</button>
         </div>
-        <button id="clear-builder" class="ghost-btn">Clear</button>
+        <div class="toolbar-actions">
+          <button id="backdrop-toggle" class="icon-btn" title="Change backdrop">🎨</button>
+          <button id="clear-builder" class="ghost-btn">Clear</button>
+        </div>
       </div>
 
       <div class="mannequin-stage" id="mannequin-stage">
-        <div id="mannequin-svg-wrap"></div>
+        <div id="mannequin-backdrop" class="mannequin-backdrop"></div>
+        <img id="mannequin-photo" class="mannequin-photo" alt="">
         <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
         <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
       </div>
@@ -129,6 +133,17 @@
   </div>
 </div>
 
+<!-- BACKDROP PICKER MODAL -->
+<div id="backdrop-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Choose a Backdrop</h2>
+    <div class="backdrop-swatch-grid" id="backdrop-swatch-grid"></div>
+    <div class="modal-actions">
+      <button id="backdrop-cancel" class="ghost-btn">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- COLOR PALETTE MODAL (shoes / accessories) -->
 <div id="color-modal" class="modal-overlay">
   <div class="modal">
@@ -164,7 +179,6 @@
   </div>
 </div>
 
-<script src="mannequins.js"></script>
 <script src="seed-data.js"></script>
 <script src="bg-remove.js"></script>
 <script src="db.js"></script>

@@ -1,10 +1,34 @@
 const DEFAULT_PLACEMENT = {
-  top: { x: 26, y: 17, w: 48, h: 29, r: 0 },
-  bottom: { x: 27, y: 45, w: 46, h: 39, r: 0 },
+  top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
+  bottom: { x: 27, y: 49, w: 46, h: 38, r: 0 },
   shoes: { x: 33, y: 79, w: 34, h: 11, r: 0 }
 };
 const CATEGORIES = ["top", "bottom"];
 const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
+
+const MANNEQUIN_PHOTO = { female: "assets/mannequin/female-cutout.png", male: "assets/mannequin/male-cutout.png" };
+
+// Where each mannequin photo's own shoulder line sits, measured directly
+// from the source images (widest point of the torso in the top ~40%).
+// The mannequin-stage aspect ratio (2:3) matches these photos exactly, so
+// these fractions map straight onto stage percentages with no conversion.
+const MANNEQUIN_SHOULDER = {
+  female: { y: 16.51, centerX: 51.02, width: 36.56 },
+  male: { y: 16.20, centerX: 50.94, width: 40.31 }
+};
+
+const BACKDROPS = [
+  { name: "White", value: "#ffffff" },
+  { name: "Soft Grey", value: "#e8e6ef" },
+  { name: "Turquoise", value: "linear-gradient(160deg,#2dd4c8,#1a9e94)" },
+  { name: "Blush Pink", value: "linear-gradient(160deg,#ffd1e3,#ff9ec4)" },
+  { name: "Lavender", value: "linear-gradient(160deg,#d9c8ff,#a98aff)" },
+  { name: "Sunset", value: "linear-gradient(160deg,#ffb37b,#ff6f61)" },
+  { name: "Sky", value: "linear-gradient(160deg,#bfe3ff,#7fc4ff)" },
+  { name: "Navy", value: "linear-gradient(160deg,#3a4a63,#1b2434)" },
+  { name: "Charcoal", value: "linear-gradient(160deg,#4a4a52,#232327)" },
+  { name: "Forest", value: "linear-gradient(160deg,#4d7a5f,#274a37)" }
+];
 
 // Shoes/accessories are picked as a color rather than photographed - a
 // small curated palette covers most real shoes without needing a photo.
@@ -32,27 +56,18 @@ function shoeShapeSVG(color) {
   </svg>`;
 }
 
-// Where the mannequin's own shoulder line sits, in #mannequin-stage percent
-// coordinates - derived from the mannequin SVG geometry (shoulder span is
-// ~95/200 of the figure's width at y=100/560, rendered at 92% of stage
-// height, centered). Used to auto-align a shirt photo's detected shoulders.
-const MANNEQUIN_SHOULDER = { y: 20.43, centerX: 50, width: 26 };
-
-function autoTopPlacement(item) {
+function autoTopPlacement(item, gender) {
   const s = item && item.shoulder;
+  const shoulder = MANNEQUIN_SHOULDER[gender] || MANNEQUIN_SHOULDER.female;
   if (!s || !s.widthFrac) return { ...DEFAULT_PLACEMENT.top };
-  const w = clamp(MANNEQUIN_SHOULDER.width / s.widthFrac, 20, 80);
-  const h = clamp(w * 0.6 * s.imgAspect, 8, 85);
-  const x = clamp(MANNEQUIN_SHOULDER.centerX - s.xFrac * w, -10, 100);
-  const y = clamp(MANNEQUIN_SHOULDER.y - s.yFrac * h, -10, 100);
+  // mannequin-stage aspect ratio is 2:3 (width:height) - converts a
+  // stage-width-% size into the equivalent stage-height-% for this photo's
+  // own aspect ratio, so the box keeps the garment photo's proportions.
+  const w = clamp(shoulder.width / s.widthFrac, 20, 80);
+  const h = clamp(w * (2 / 3) * s.imgAspect, 8, 85);
+  const x = clamp(shoulder.centerX - s.xFrac * w, -10, 100);
+  const y = clamp(shoulder.y - s.yFrac * h, -10, 100);
   return { x, y, w, h, r: 0 };
-}
-
-let mannequinInstanceCounter = 0;
-function instantiateMannequin(gender) {
-  const gradId = gender === "male" ? "maleBody" : "femaleBody";
-  const uniqueId = `${gradId}-${mannequinInstanceCounter++}`;
-  return MANNEQUINS[gender].split(gradId).join(uniqueId);
 }
 
 let itemsCache = [];
@@ -221,7 +236,8 @@ $("#clear-builder").addEventListener("click", () => {
 });
 
 function renderMannequinBase() {
-  $("#mannequin-svg-wrap").innerHTML = instantiateMannequin(builder.gender);
+  $("#mannequin-photo").src = MANNEQUIN_PHOTO[builder.gender];
+  $("#mannequin-backdrop").style.background = getBackdrop();
 }
 
 function renderAllSlots() {
@@ -437,7 +453,7 @@ function openPicker(cat) {
           if (cat === "top") {
             // Shirts are auto-aligned to the mannequin's shoulders rather
             // than left at a manual position, so re-align fresh each time.
-            builder.placements[cat] = { itemId: it.id, ...autoTopPlacement(it) };
+            builder.placements[cat] = { itemId: it.id, ...autoTopPlacement(it, builder.gender) };
           } else {
             const existing = builder.placements[cat];
             builder.placements[cat] = {
@@ -569,9 +585,10 @@ function renderOutfitDeck() {
     card.className = "outfit-card" + (idx === deckIndex ? " current" : "");
     const stage = document.createElement("div");
     stage.className = "outfit-stage";
-    stage.innerHTML = `<div class="mannequin-bg-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">${instantiateMannequin(outfit.gender)}</div>`;
-    stage.querySelector("svg").style.height = "92%";
-    stage.querySelector("svg").style.width = "auto";
+    stage.innerHTML = `
+      <div class="mannequin-backdrop" style="background:${getBackdrop()}"></div>
+      <img class="mannequin-photo" src="${MANNEQUIN_PHOTO[outfit.gender]}" alt="">
+    `;
 
     Object.entries(outfit.placements).forEach(([cat, p]) => {
       const div = document.createElement("div");
@@ -673,6 +690,45 @@ function initTheme() {
     applyTheme(next);
   });
 }
+
+// ---------- Backdrop ----------
+function getBackdrop() {
+  let stored = null;
+  try { stored = localStorage.getItem("wardrobe-backdrop"); } catch (e) { /* ignore */ }
+  return stored || BACKDROPS[0].value;
+}
+function setBackdrop(value) {
+  try { localStorage.setItem("wardrobe-backdrop", value); } catch (e) { /* ignore */ }
+  $("#mannequin-backdrop").style.background = value;
+  if (currentView() === "outfits") renderOutfitDeck();
+}
+function currentView() {
+  const active = $(".view.active");
+  return active ? active.id.replace("view-", "") : "";
+}
+
+function openBackdropPicker() {
+  const grid = $("#backdrop-swatch-grid");
+  grid.innerHTML = "";
+  const current = getBackdrop();
+  BACKDROPS.forEach(bd => {
+    const btn = document.createElement("button");
+    btn.className = "backdrop-swatch" + (bd.value === current ? " selected" : "");
+    btn.style.background = bd.value;
+    btn.innerHTML = `<span>${bd.name}</span>`;
+    btn.addEventListener("click", () => {
+      setBackdrop(bd.value);
+      closeBackdropPicker();
+    });
+    grid.appendChild(btn);
+  });
+  $("#backdrop-modal").classList.add("open");
+}
+function closeBackdropPicker() {
+  $("#backdrop-modal").classList.remove("open");
+}
+$("#backdrop-toggle").addEventListener("click", openBackdropPicker);
+$("#backdrop-cancel").addEventListener("click", closeBackdropPicker);
 
 // ---------- Init ----------
 async function seedIfEmpty() {

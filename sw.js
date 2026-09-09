@@ -1,15 +1,16 @@
-const CACHE = "wardrobe-v10";
+const CACHE = "wardrobe-v11";
 const ASSETS = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
   "db.js",
-  "mannequins.js",
   "seed-data.js",
   "bg-remove.js",
   "manifest.json",
   "assets/icon.svg",
+  "assets/mannequin/female-cutout.png",
+  "assets/mannequin/male-cutout.png",
   "assets/seed/top-white-tee.jpg",
   "assets/seed/top-pink-tee.jpg",
   "assets/seed/top-black-tee.jpg",

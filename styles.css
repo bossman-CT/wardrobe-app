@@ -205,6 +205,21 @@ html, body {
   align-items: center;
   margin-bottom: 12px;
 }
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
 .gender-toggle {
   display: flex;
   background: var(--card-bg);
@@ -229,7 +244,7 @@ html, body {
 .mannequin-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 5;
+  aspect-ratio: 2 / 3;
   background: var(--photo-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -237,15 +252,18 @@ html, body {
   touch-action: none;
   user-select: none;
 }
-#mannequin-svg-wrap {
+.mannequin-backdrop {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+.mannequin-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   pointer-events: none;
 }
-#mannequin-svg-wrap svg { height: 92%; width: auto; }
 
 .slot-layer {
   position: absolute;
@@ -355,7 +373,7 @@ html, body {
 .outfit-deck {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 5;
+  aspect-ratio: 2 / 3;
   margin-bottom: 12px;
 }
 .outfit-card {
@@ -373,11 +391,11 @@ html, body {
   position: relative;
   flex: 1;
 }
-.outfit-card .outfit-stage img.mannequin-bg { position:absolute; inset:0; margin:auto; height:92%; width:auto; top:0; bottom:0; left:0; right:0; }
 .outfit-card .placed-item { cursor: default; }
 .outfit-card .outfit-title {
   padding: 10px 14px;
   font-weight: 700;
+  color: #201f2b;
   border-top: 1px solid var(--border);
 }
 
@@ -515,6 +533,33 @@ select, input[type="text"] {
   grid-template-columns: repeat(3, 1fr);
   max-height: 50vh;
   overflow-y: auto;
+}
+
+.backdrop-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.backdrop-swatch {
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+}
+.backdrop-swatch.selected { border-color: var(--accent); }
+.backdrop-swatch span {
+  width: 100%;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 2px;
+  text-align: center;
 }
 
 .color-swatch-grid {
