@@ -1,9 +1,16 @@
 const DEFAULT_PLACEMENT = {
-  top: { x: 22, y: 14, w: 56, h: 30 },
-  bottom: { x: 24, y: 42, w: 52, h: 32 },
-  shoes: { x: 30, y: 76, w: 40, h: 14 }
+  top: { x: 26, y: 17, w: 48, h: 29 },
+  bottom: { x: 27, y: 45, w: 46, h: 39 },
+  shoes: { x: 33, y: 79, w: 34, h: 11 }
 };
 const CATEGORIES = ["top", "bottom", "shoes", "other"];
+
+let mannequinInstanceCounter = 0;
+function instantiateMannequin(gender) {
+  const gradId = gender === "male" ? "maleBody" : "femaleBody";
+  const uniqueId = `${gradId}-${mannequinInstanceCounter++}`;
+  return MANNEQUINS[gender].split(gradId).join(uniqueId);
+}
 
 let itemsCache = [];
 let outfitsCache = [];
@@ -119,13 +126,21 @@ handleFileInput($("#input-file"));
 
 $("#add-save").addEventListener("click", async () => {
   if (!pendingImage) return;
+  $("#add-save").disabled = true;
+  $("#add-save").textContent = "Processing...";
+  let image = pendingImage;
+  try {
+    const img = await loadImageFromSrc(pendingImage);
+    image = await removeBackground(img);
+  } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
-    image: pendingImage,
+    image,
     category: $("#add-category").value,
     name: $("#add-name").value.trim(),
     createdAt: Date.now()
   };
+  $("#add-save").textContent = "Save Item";
   await DB.addItem(item);
   closeAddModal();
   await loadItems();
@@ -147,7 +162,7 @@ $("#clear-builder").addEventListener("click", () => {
 });
 
 function renderMannequinBase() {
-  $("#mannequin-svg-wrap").innerHTML = MANNEQUINS[builder.gender];
+  $("#mannequin-svg-wrap").innerHTML = instantiateMannequin(builder.gender);
 }
 
 function renderAllSlots() {
@@ -182,6 +197,7 @@ function renderSlot(cat) {
 
   const wrap = document.createElement("div");
   wrap.className = "placed-item";
+  wrap.dataset.cat = cat;
   wrap.innerHTML = `
     <button class="swap-handle">↻</button>
     <img src="${item ? item.image : ""}" alt="">
@@ -352,7 +368,7 @@ function renderOutfitDeck() {
     card.className = "outfit-card" + (idx === deckIndex ? " current" : "");
     const stage = document.createElement("div");
     stage.className = "outfit-stage";
-    stage.innerHTML = `<div class="mannequin-bg-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">${MANNEQUINS[outfit.gender]}</div>`;
+    stage.innerHTML = `<div class="mannequin-bg-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">${instantiateMannequin(outfit.gender)}</div>`;
     stage.querySelector("svg").style.height = "92%";
     stage.querySelector("svg").style.width = "auto";
 
@@ -360,6 +376,7 @@ function renderOutfitDeck() {
       const item = itemsCache.find(i => i.id === p.itemId);
       const div = document.createElement("div");
       div.className = "placed-item";
+      div.dataset.cat = cat;
       div.style.position = "absolute";
       div.style.left = p.x + "%";
       div.style.top = p.y + "%";
@@ -425,9 +442,23 @@ $("#deck-edit").addEventListener("click", () => {
 });
 
 // ---------- Init ----------
+async function seedIfEmpty() {
+  const existing = await DB.getAllItems();
+  if (existing.length > 0) return;
+  for (const it of SEED_ITEMS) {
+    let image = it.image;
+    try {
+      const img = await loadImageFromSrc(it.image);
+      image = await removeBackground(img);
+    } catch (e) { /* fall back to the original photo if processing fails */ }
+    await DB.addItem({ id: uid(), image, category: it.category, name: it.name, createdAt: Date.now() });
+  }
+}
+
 async function init() {
   renderMannequinBase();
   renderAllSlots();
+  await seedIfEmpty();
   await loadItems();
   await loadOutfits();
   if ("serviceWorker" in navigator) {

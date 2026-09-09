@@ -217,9 +217,9 @@ html, body {
 }
 .slot-layer.filled .slot-label { display: none; }
 
-#slot-top { left: 22%; top: 14%; width: 56%; height: 30%; }
-#slot-bottom { left: 24%; top: 42%; width: 52%; height: 32%; }
-#slot-shoes { left: 30%; top: 76%; width: 40%; height: 14%; }
+#slot-top { left: 26%; top: 17%; width: 48%; height: 29%; }
+#slot-bottom { left: 27%; top: 45%; width: 46%; height: 39%; }
+#slot-shoes { left: 33%; top: 79%; width: 34%; height: 11%; }
 
 .placed-item {
   position: absolute;
@@ -233,6 +233,9 @@ html, body {
   height: 100%;
   object-fit: contain;
   pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(20,15,10,0.35));
+  mask-image: radial-gradient(ellipse 72% 72% at center, black 50%, transparent 98%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 72% at center, black 50%, transparent 98%);
 }
 .resize-handle {
   position: absolute;
