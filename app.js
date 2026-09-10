@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 23;
+const APP_VERSION = 25;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -291,10 +291,12 @@ const STAGE_RATIO = 6 / 7; // width / height
 
 let lastBuilderStageSize = null;
 
+const STAGE_SIDE_MARGIN = 16; // leaves room for the next outfit to peek in
+
 function fitStageBox(slotEl) {
   const box = slotEl.firstElementChild;
   if (!box) return;
-  const availW = slotEl.clientWidth;
+  const availW = slotEl.clientWidth - STAGE_SIDE_MARGIN * 2;
   const availH = slotEl.clientHeight;
   if (!availW || !availH) return;
   let w = availW, h = w / STAGE_RATIO;
@@ -318,7 +320,7 @@ const stageResizeObserver = new ResizeObserver((entries) => {
 // what it would be, since a hidden Builder view measures as 0x0.
 function matchBuilderStageSize(stageEl) {
   if (!lastBuilderStageSize) {
-    const availW = Math.min(window.innerWidth, 480) - 32;
+    const availW = Math.min(window.innerWidth, 480) - 32 - STAGE_SIDE_MARGIN * 2;
     const w = Math.round(availW);
     lastBuilderStageSize = { width: w, height: Math.round(w / STAGE_RATIO) };
   }

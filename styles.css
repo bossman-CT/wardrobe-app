@@ -322,7 +322,7 @@ html, body {
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   overflow: hidden;
 }
@@ -340,6 +340,11 @@ html, body {
   overflow: hidden;
   touch-action: none;
   user-select: none;
+}
+/* Outfit cards aren't draggable like the Builder's stage - touch-action:
+   none there would swallow the swipe gesture needed to scroll the rail. */
+.outfit-card .outfit-stage {
+  touch-action: pan-x;
 }
 .mannequin-backdrop {
   position: absolute;
@@ -455,7 +460,7 @@ html, body {
   background: var(--bg);
   border: 1px solid var(--border);
   border-top: none;
-  z-index: 1;
+  z-index: 3;
 }
 .hanger-hook {
   position: absolute;
