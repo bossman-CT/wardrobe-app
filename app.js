@@ -775,7 +775,7 @@ function initServiceWorker() {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloading) return;
     reloading = true;
-    location.reload();
+    location.href = location.pathname + "?_=" + Date.now();
   });
 
   // Deterministic refresh: rather than relying on postMessage/skipWaiting
@@ -791,7 +791,10 @@ function initServiceWorker() {
       const keys = await caches.keys();
       for (const key of keys) await caches.delete(key);
     } catch (e) { /* ignore */ }
-    location.reload();
+    // A plain reload() can still be served from the browser's own HTTP
+    // cache if this exact document was cached before the no-cache headers
+    // existed. A cache-busted URL guarantees a real network fetch.
+    location.href = location.pathname + "?_=" + Date.now();
   });
 }
 

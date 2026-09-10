@@ -1,11 +1,11 @@
-const CACHE = "wardrobe-v15";
+const CACHE = "wardrobe-v16";
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css",
-  "app.js",
-  "db.js",
-  "bg-remove.js",
+  "styles.css?v=2",
+  "app.js?v=2",
+  "db.js?v=2",
+  "bg-remove.js?v=2",
   "manifest.json",
   "assets/icon.svg"
 ];
