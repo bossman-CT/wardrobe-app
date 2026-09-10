@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 21;
+const APP_VERSION = 22;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -289,6 +289,8 @@ const MAX_ITEM_SIZE = 85;
 // the tighter fit wins, and the stage is sized down to match it exactly.
 const STAGE_RATIO = 6 / 7; // width / height
 
+let lastBuilderStageSize = null;
+
 function fitStageBox(slotEl) {
   const box = slotEl.firstElementChild;
   if (!box) return;
@@ -297,13 +299,32 @@ function fitStageBox(slotEl) {
   if (!availW || !availH) return;
   let w = availW, h = w / STAGE_RATIO;
   if (h > availH) { h = availH; w = h * STAGE_RATIO; }
-  box.style.width = Math.round(w) + "px";
-  box.style.height = Math.round(h) + "px";
+  w = Math.round(w);
+  h = Math.round(h);
+  box.style.width = w + "px";
+  box.style.height = h + "px";
+  if (box.id === "mannequin-stage") lastBuilderStageSize = { width: w, height: h };
 }
 
 const stageResizeObserver = new ResizeObserver((entries) => {
   for (const entry of entries) fitStageBox(entry.target);
 });
+
+// Outfit cards don't compute their own box size - they copy Builder's
+// current one exactly, so an outfit always looks pixel-identical to how
+// it was built, never stretched or shrunk to fit whatever room the
+// Outfits view happens to have around it. If Builder has never actually
+// been shown yet (e.g. Outfits opened first), fall back to computing
+// what it would be, since a hidden Builder view measures as 0x0.
+function matchBuilderStageSize(stageEl) {
+  if (!lastBuilderStageSize) {
+    const availW = Math.min(window.innerWidth, 480) - 32;
+    const w = Math.round(availW);
+    lastBuilderStageSize = { width: w, height: Math.round(w / STAGE_RATIO) };
+  }
+  stageEl.style.width = lastBuilderStageSize.width + "px";
+  stageEl.style.height = lastBuilderStageSize.height + "px";
+}
 
 // Only the Builder's stage uses fixed-ratio JS sizing; outfit cards
 // stretch-fill via plain CSS, so they're deliberately left out here.
@@ -575,7 +596,7 @@ async function loadOutfits() {
 let hangerGradId = 0;
 function hangerHookSVG() {
   const id = "hanger-grad-" + (hangerGradId++);
-  return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  return `<svg viewBox="0 0 100 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#f5f6f8"/>
@@ -583,8 +604,8 @@ function hangerHookSVG() {
         <stop offset="100%" stop-color="#767c86"/>
       </linearGradient>
     </defs>
-    <path d="M50 13 C50 19 44 19 44 24 L56 24 C56 19 50 19 50 13" fill="none" stroke="url(#${id})" stroke-width="4" stroke-linecap="round"/>
-    <path d="M6 30 L45 22 L55 22 L94 30" fill="none" stroke="url(#${id})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M50 12 C50 20 42 20 42 28 L58 28 C58 20 50 20 50 12" fill="none" stroke="url(#${id})" stroke-width="4" stroke-linecap="round"/>
+    <path d="M6 40 L44 28 L56 28 L94 40" fill="none" stroke="url(#${id})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -596,14 +617,14 @@ function renderOutfitDeck() {
   deck.innerHTML = "";
 
   if (outfitsCache.length === 0) {
-    empty.style.display = "block";
-    $(".hanger-rail-wrap").style.display = "none";
+    empty.querySelector(".hanger-hook").innerHTML = hangerHookSVG();
+    empty.style.display = "flex";
+    deck.style.display = "none";
     controls.style.display = "none";
     actions.style.display = "none";
     return;
   }
   empty.style.display = "none";
-  $(".hanger-rail-wrap").style.display = "flex";
   deck.style.display = "flex";
   controls.style.display = "flex";
   actions.style.display = "flex";
@@ -650,6 +671,7 @@ function renderOutfitDeck() {
     card.appendChild(stageSlot);
     card.appendChild(title);
     deck.appendChild(card);
+    matchBuilderStageSize(stage);
   });
 
   $("#deck-position").textContent = `${deckIndex + 1} / ${outfitsCache.length}`;
