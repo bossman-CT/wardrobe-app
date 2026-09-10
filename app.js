@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 26;
+const APP_VERSION = 27;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -498,7 +498,7 @@ $("#color-remove").addEventListener("click", () => {
   closeColorPicker();
 });
 
-// ---------- Random outfit (color matching) ----------
+// ---------- Suggest Outfit (color/fashion matching) ----------
 function parseRgb(str) {
   const m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(str || "");
   return m ? { r: +m[1], g: +m[2], b: +m[3] } : null;
@@ -520,19 +520,59 @@ function rgbToHsl({ r, g, b }) {
   }
   return { h, s, l };
 }
-function isNeutral(hsl) { return hsl.s < 0.18 || hsl.l < 0.14 || hsl.l > 0.92; }
 function hueDist(a, b) { const d = Math.abs(a - b); return Math.min(d, 360 - d); }
-function colorsWork(colorA, colorB) {
-  const rgbA = parseRgb(colorA), rgbB = parseRgb(colorB);
-  if (!rgbA || !rgbB) return true; // no data - don't block the pairing
-  const a = rgbToHsl(rgbA), b = rgbToHsl(rgbB);
-  if (isNeutral(a) || isNeutral(b)) return true; // neutrals pair with anything
-  const d = hueDist(a.h, b.h);
-  return d <= 40 || d >= 140; // analogous or complementary-ish
+
+// Buckets a color into a fashion "family" rather than just raw hue/lightness -
+// useful for telling apart e.g. navy vs. black, or brown vs. beige, which
+// plain hue/lightness math alone would blur together.
+function classifyColor(hsl) {
+  const { h, s, l } = hsl;
+  if (l < 0.15) return "black";
+  if (l > 0.92) return "white";
+  if (s < 0.14) return "grey";
+  if (h >= 195 && h <= 250 && l < 0.32) return "navy";
+  if (h >= 15 && h <= 50 && l < 0.55 && s < 0.6) return "brown";
+  if (h >= 25 && h <= 55 && l >= 0.55) return "beige";
+  return "chromatic";
+}
+const NEUTRAL_FAMILIES = new Set(["black", "white", "grey", "navy", "brown", "beige"]);
+// "Never mix black and brown" is a famously outdated rule - current stylist
+// consensus (Elle, InStyle, etc.) is that it works fine, even fashionably,
+// when it looks deliberate. No neutral-vs-neutral pairing is treated as a
+// hard clash; CLASH_PAIRS is kept as a hook for anything real-world testing
+// with an actual closet turns up.
+const CLASH_PAIRS = [];
+
+function isClashPair(famA, famB) {
+  return CLASH_PAIRS.some(([x, y]) => (famA === x && famB === y) || (famA === y && famB === x));
 }
 
-let lastShuffleKey = null;
-function shuffleOutfit() {
+// Scores how well two garment colors work together: negative means a real
+// clash, 0 a lukewarm pairing, higher means a more confidently "good"
+// pairing. Returns null if either color is unknown (never blocks a pairing
+// just because we don't have color data for it).
+function outfitColorScore(colorA, colorB) {
+  const rgbA = parseRgb(colorA), rgbB = parseRgb(colorB);
+  if (!rgbA || !rgbB) return null;
+  const a = rgbToHsl(rgbA), b = rgbToHsl(rgbB);
+  const famA = classifyColor(a), famB = classifyColor(b);
+
+  if (isClashPair(famA, famB)) return -10;
+
+  const aNeutral = NEUTRAL_FAMILIES.has(famA);
+  const bNeutral = NEUTRAL_FAMILIES.has(famB);
+  if (aNeutral && bNeutral) return famA === famB ? 3 : 2; // e.g. black+white, brown+beige
+  if (aNeutral || bNeutral) return 2; // neutrals are versatile against any color
+
+  const d = hueDist(a.h, b.h);
+  if (d <= 40) return 3; // analogous
+  if (d >= 140) return 3; // complementary
+  if (d <= 65 || d >= 115) return 1; // a looser, still-workable pairing
+  return -1; // hues fight each other without being complementary
+}
+
+let lastSuggestKey = null;
+function suggestOutfit() {
   const tops = itemsCache.filter(i => i.category === "top");
   const bottoms = itemsCache.filter(i => i.category === "bottom");
   if (!tops.length || !bottoms.length) {
@@ -541,22 +581,28 @@ function shuffleOutfit() {
   }
   const pairs = [];
   for (const t of tops) {
-    for (const b of bottoms) pairs.push({ t, b, good: colorsWork(t.color, b.color) });
+    for (const b of bottoms) {
+      const score = outfitColorScore(t.color, b.color);
+      pairs.push({ t, b, score: score === null ? 2 : score }); // no color data - treat as neutral/safe
+    }
   }
-  const goodPairs = pairs.filter(p => p.good);
-  const pool = goodPairs.length ? goodPairs : pairs;
+  const bestScore = Math.max(...pairs.map(p => p.score));
+  // Prefer the best-scoring pairings, but only fall down a tier if that
+  // tier is too thin to give any real variety day to day.
+  let pool = pairs.filter(p => p.score === bestScore);
+  if (pool.length < 3) pool = pairs.filter(p => p.score >= bestScore - 1);
   let pick;
   for (let i = 0; i < 6; i++) {
     pick = pool[Math.floor(Math.random() * pool.length)];
     const key = pick.t.id + ":" + pick.b.id;
-    if (key !== lastShuffleKey || pool.length === 1) { lastShuffleKey = key; break; }
+    if (key !== lastSuggestKey || pool.length === 1) { lastSuggestKey = key; break; }
   }
   builder.placements.top = { itemId: pick.t.id, ...DEFAULT_PLACEMENT.top };
   builder.placements.bottom = { itemId: pick.b.id, ...DEFAULT_PLACEMENT.bottom };
   renderAllSlots();
   refreshBackdrop();
 }
-$("#shuffle-outfit").addEventListener("click", shuffleOutfit);
+$("#suggest-outfit").addEventListener("click", suggestOutfit);
 
 // ---------- Save outfit ----------
 $("#save-outfit").addEventListener("click", () => {

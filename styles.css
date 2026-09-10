@@ -396,6 +396,10 @@ html, body {
   text-align: center;
   margin: 10px 4px;
 }
+.suggest-hint {
+  margin-top: -4px;
+  margin-bottom: 12px;
+}
 
 /* Outfits / hanger rail. .hanger-rod is a stationary metal bar; the deck
    scrolls beneath it and each card's hook rises into the deck's own top
