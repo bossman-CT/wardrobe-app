@@ -1,0 +1,11 @@
+Fix update banner never clearing after refresh
+
+The banner could re-trigger right after the user clicked Refresh because
+the browser's normal HTTP cache was allowed to serve a stale copy of
+sw.js during the update check, making it look like a new version was
+always available. Force every service worker update check straight to
+the network (updateViaCache: none) and set explicit no-cache headers on
+sw.js/index.html/manifest.json via vercel.json so no CDN or browser
+cache layer can serve a stale copy of those files.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
