@@ -397,7 +397,10 @@ html, body {
    padding to meet it, so hangers appear to slide along a fixed rod. */
 .hanger-rail-wrap {
   position: relative;
-  flex: 1;
+  flex: 0 1 auto; /* only as tall as its content (hook + box + title) -
+                      never stretches to fill leftover view height, which
+                      is what was pulling the hook away from the rod */
+  max-height: 100%;
   min-height: 120px;
   display: flex;
   flex-direction: column;
@@ -417,9 +420,9 @@ html, body {
 }
 .outfit-deck {
   width: 100%;
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
