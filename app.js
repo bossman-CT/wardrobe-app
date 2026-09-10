@@ -1,3 +1,11 @@
+// Bump this alongside sw.js's CACHE version on every release. Kept as a
+// simple, explicit number instead of relying on the service worker's own
+// install/waiting/activate lifecycle to detect updates - that lifecycle
+// has too many edge cases (accumulated waiting workers, a controller
+// reference an already-open tab won't drop) that left the update banner
+// stuck permanently visible for some users.
+const APP_VERSION = 17;
+
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
   bottom: { x: 27, y: 49, w: 46, h: 38, r: 0 },
@@ -738,64 +746,45 @@ $("#backdrop-toggle").addEventListener("click", openBackdropPicker);
 $("#backdrop-cancel").addEventListener("click", closeBackdropPicker);
 
 // ---------- Service worker / update banner ----------
-// One-time cleanup for phones that got stuck showing the update banner
-// from before update checks were forced to bypass the cache. Wipes the
-// old service worker registration and its Cache Storage (NOT IndexedDB,
-// so closet items/outfits are untouched) and re-registers fresh.
-async function resetStuckServiceWorker() {
-  const FLAG = "wardrobe-sw-reset-1";
-  let alreadyReset = false;
-  try { alreadyReset = localStorage.getItem(FLAG) === "1"; } catch (e) { /* ignore */ }
-  if (alreadyReset || !("serviceWorker" in navigator)) return;
+// Update detection is a plain version-number comparison against a fresh
+// (cache-busted) fetch of sw.js, not the service worker install/waiting/
+// activate lifecycle - that lifecycle left some phones with a permanently
+// stuck "update available" banner (accumulated waiting workers, and an
+// already-open tab that never drops its old controller reference). The
+// service worker itself is still registered below purely for offline
+// asset caching; it has nothing to do with showing this banner.
+async function checkForUpdate() {
+  try {
+    const res = await fetch("sw.js?_=" + Date.now(), { cache: "no-store" });
+    const text = await res.text();
+    const m = /CACHE\s*=\s*"wardrobe-v(\d+)"/.exec(text);
+    if (m && parseInt(m[1], 10) > APP_VERSION) {
+      $("#update-banner").hidden = false;
+    }
+  } catch (e) { /* offline or blocked - just skip the check */ }
+}
+
+// Wipes the service worker registration and its Cache Storage (NOT
+// IndexedDB, so closet items/outfits are untouched), then loads a
+// cache-busted URL so the browser can't serve this exact document or its
+// scripts from its own ordinary HTTP cache either.
+async function hardRefresh() {
+  $("#update-reload-btn").disabled = true;
+  $("#update-reload-btn").textContent = "Updating...";
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
     for (const reg of regs) await reg.unregister();
     const keys = await caches.keys();
     for (const key of keys) await caches.delete(key);
   } catch (e) { /* ignore */ }
-  try { localStorage.setItem(FLAG, "1"); } catch (e) { /* ignore */ }
+  location.href = location.pathname + "?_=" + Date.now();
 }
 
 function initServiceWorker() {
+  $("#update-reload-btn").addEventListener("click", hardRefresh);
+  checkForUpdate();
   if (!("serviceWorker" in navigator)) return;
-
-  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
-    reg.addEventListener("updatefound", () => {
-      const installing = reg.installing;
-      if (!installing) return;
-      installing.addEventListener("statechange", () => {
-        if (installing.state === "installed" && navigator.serviceWorker.controller) {
-          $("#update-banner").hidden = false;
-        }
-      });
-    });
-  }).catch(() => {});
-
-  let reloading = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
-    reloading = true;
-    location.href = location.pathname + "?_=" + Date.now();
-  });
-
-  // Deterministic refresh: rather than relying on postMessage/skipWaiting
-  // handoff (which no-ops if reg.waiting is empty by the time this fires),
-  // just unregister everything, drop the cache, and hard-reload. IndexedDB
-  // (closet items/outfits) lives in separate storage and isn't touched.
-  $("#update-reload-btn").addEventListener("click", async () => {
-    $("#update-reload-btn").disabled = true;
-    $("#update-reload-btn").textContent = "Updating...";
-    try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) await reg.unregister();
-      const keys = await caches.keys();
-      for (const key of keys) await caches.delete(key);
-    } catch (e) { /* ignore */ }
-    // A plain reload() can still be served from the browser's own HTTP
-    // cache if this exact document was cached before the no-cache headers
-    // existed. A cache-busted URL guarantees a real network fetch.
-    location.href = location.pathname + "?_=" + Date.now();
-  });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
 }
 
 // ---------- Init ----------
@@ -815,7 +804,6 @@ async function init() {
   await loadItems();
   refreshBackdrop();
   await loadOutfits();
-  await resetStuckServiceWorker();
   initServiceWorker();
 }
 init();

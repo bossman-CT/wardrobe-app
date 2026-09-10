@@ -1,21 +1,17 @@
-const CACHE = "wardrobe-v16";
+const CACHE = "wardrobe-v17";
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=2",
-  "app.js?v=2",
-  "db.js?v=2",
-  "bg-remove.js?v=2",
+  "styles.css?v=3",
+  "app.js?v=3",
+  "db.js?v=3",
+  "bg-remove.js?v=3",
   "manifest.json",
   "assets/icon.svg"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
