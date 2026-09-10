@@ -823,6 +823,20 @@ select, input[type="text"] {
   font-weight: 600;
   font-size: 14px;
 }
+.photo-view-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+  margin-top: 14px;
+}
+.photo-view-field select {
+  width: auto;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+}
 .photo-view-close {
   position: absolute;
   top: 0;

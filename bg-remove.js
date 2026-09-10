@@ -3,6 +3,128 @@
 // resulting edge, so clothing photos with a plain backdrop show just the
 // garment instead of a hard rectangle.
 
+function pixelToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return { h, s, l };
+}
+
+// Lightness is deliberately the least significant term: a solid garment
+// photographed with folds and shadows swings a lot in brightness but barely
+// at all in hue, so weighting brightness normally would read every wrinkled
+// sweater as a print. Hue is scaled by saturation because the hue of a
+// near-grey pixel is meaningless noise.
+function patternColorDistance(a, b) {
+  const dh = Math.abs(a.h - b.h);
+  const hue = (Math.min(dh, 360 - dh) / 180) * Math.min(a.s, b.s);
+  return hue * 1.6 + Math.abs(a.s - b.s) * 0.9 + Math.abs(a.l - b.l) * 0.55;
+}
+
+// Reports whether a garment reads as a solid or a print, and how large the
+// print is. Stylists treat a solid as an anchor that goes with any pattern,
+// while two prints only work together when their scales clearly differ, so
+// the outfit scorer needs both facts.
+function analyzePattern(data, visited, cw, ch) {
+  const n = cw * ch;
+  const stride = Math.max(1, Math.floor(n / 40000));
+
+  const BUCKETS = 6, BUCKET_SIZE = 256 / BUCKETS;
+  const hist = new Int32Array(BUCKETS * BUCKETS * BUCKETS);
+  const samples = [];
+  for (let i = 0; i < n; i += stride) {
+    if (visited[i]) continue;
+    const di = i * 4;
+    const r = data[di], g = data[di + 1], b = data[di + 2];
+    const br = Math.min(BUCKETS - 1, (r / BUCKET_SIZE) | 0);
+    const bg = Math.min(BUCKETS - 1, (g / BUCKET_SIZE) | 0);
+    const bb = Math.min(BUCKETS - 1, (b / BUCKET_SIZE) | 0);
+    const bucket = (br * BUCKETS + bg) * BUCKETS + bb;
+    samples.push({ r, g, b, bucket, hsl: pixelToHsl(r, g, b) });
+    hist[bucket]++;
+  }
+  if (samples.length < 200) return null;
+
+  let topBucket = 0;
+  for (let i = 1; i < hist.length; i++) if (hist[i] > hist[topBucket]) topBucket = i;
+  // Averaged over the pixels actually in the bucket rather than taken from
+  // the bucket's midpoint - a bucket spans a wide chunk of color space, so
+  // its midpoint can sit far enough from the real garment color to make a
+  // plain solid look like a print.
+  let domR = 0, domG = 0, domB = 0, domCount = 0;
+  for (const s of samples) {
+    if (s.bucket !== topBucket) continue;
+    domR += s.r; domG += s.g; domB += s.b; domCount++;
+  }
+  const dominant = pixelToHsl(domR / domCount, domG / domCount, domB / domCount);
+
+  let near = 0;
+  for (const s of samples) if (patternColorDistance(s.hsl, dominant) < 0.16) near++;
+  const dominantShare = near / samples.length;
+  // Solids - including heavily shadowed and heather-marl ones - measure at
+  // 0.99+, while every print tested lands at 0.78 or below, so the cutoff
+  // sits in the empty gap between the two rather than near either group.
+  const patterned = dominantShare < 0.88;
+  if (!patterned) return { patterned: false, scale: null };
+
+  // A fine print (pinstripes, small dots) averages out to near-nothing once
+  // the garment is squashed into a coarse grid; a bold one (large florals,
+  // wide stripes, buffalo check) still varies cell to cell. That difference
+  // is what separates the two scales.
+  const GRID = 14;
+  const cellSum = new Float64Array(GRID * GRID * 3);
+  const cellCount = new Int32Array(GRID * GRID);
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      const idx = y * cw + x;
+      if (visited[idx]) continue;
+      const cell = ((y * GRID / ch) | 0) * GRID + ((x * GRID / cw) | 0);
+      const di = idx * 4;
+      cellSum[cell * 3] += data[di];
+      cellSum[cell * 3 + 1] += data[di + 1];
+      cellSum[cell * 3 + 2] += data[di + 2];
+      cellCount[cell]++;
+    }
+  }
+  const cells = [];
+  for (let c = 0; c < GRID * GRID; c++) {
+    if (cellCount[c] < 12) { cells.push(null); continue; }
+    cells.push(pixelToHsl(
+      cellSum[c * 3] / cellCount[c],
+      cellSum[c * 3 + 1] / cellCount[c],
+      cellSum[c * 3 + 2] / cellCount[c]
+    ));
+  }
+  let diffSum = 0, diffCount = 0;
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const here = cells[y * GRID + x];
+      if (!here) continue;
+      for (const [dx, dy] of [[1, 0], [0, 1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= GRID || ny >= GRID) continue;
+        const other = cells[ny * GRID + nx];
+        if (!other) continue;
+        diffSum += patternColorDistance(here, other);
+        diffCount++;
+      }
+    }
+  }
+  const coarseVariation = diffCount ? diffSum / diffCount : 0;
+  return { patterned: true, scale: coarseVariation > 0.06 ? "bold" : "fine" };
+}
+
 function loadImageFromSrc(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -134,6 +256,8 @@ function removeBackground(img, { localTolerance = 26, seedTolerance = 55, global
       ? `rgb(${Math.round(sumR / fgCount)}, ${Math.round(sumG / fgCount)}, ${Math.round(sumB / fgCount)})`
       : null;
 
+    const pattern = analyzePattern(data, visited, cw, ch);
+
     let alpha = new Float32Array(n);
     for (let i = 0; i < n; i++) alpha[i] = visited[i] ? 0 : 255;
 
@@ -159,6 +283,6 @@ function removeBackground(img, { localTolerance = 26, seedTolerance = 55, global
 
     for (let i = 0; i < n; i++) data[i * 4 + 3] = Math.round(alpha[i]);
     ctx.putImageData(imageData, 0, 0);
-    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder, color, bgColor });
+    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder, color, bgColor, pattern });
   });
 }

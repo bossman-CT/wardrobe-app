@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Closet Companion</title>
 <meta name="theme-color" content="#7c5cff" />
-<link rel="manifest" href="manifest.json?v=20" />
+<link rel="manifest" href="manifest.json?v=21" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=20" />
+<link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -28,7 +28,7 @@
         👤 <span id="profile-name-label">Me</span>
       </button>
       <button id="sources-toggle" class="icon-btn sources-btn" title="How Suggest Outfit works">
-        <img class="sources-icon-img" src="assets/sources-icon.png?v=20" alt="" />
+        <img class="sources-icon-img" src="assets/sources-icon.png?v=21" alt="" />
       </button>
       <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
     </div>
@@ -72,7 +72,7 @@
       <p class="hint">Use Change Top/Bottom to pick items, drag to reposition. Pinch with two fingers to resize and rotate.</p>
 
       <button id="suggest-outfit" class="ghost-btn shuffle-btn">✨ Suggest Outfit</button>
-      <p class="hint suggest-hint">Suggest Outfit picks pairings from your closet with colors that actually go together - not a random shuffle.</p>
+      <p class="hint suggest-hint">Suggest Outfit picks pairings whose colors, dressiness, and patterns actually work together - not a random shuffle.</p>
       <button id="save-outfit" class="primary-btn">Save Outfit</button>
     </section>
 
@@ -136,6 +136,12 @@
       <option value="top">Top</option>
       <option value="bottom">Bottom</option>
     </select>
+    <label class="field-label">How dressy is it?</label>
+    <select id="add-formality">
+      <option value="casual">Casual — tees, jeans, shorts, sweats</option>
+      <option value="everyday" selected>Everyday — most tops, pants, skirts</option>
+      <option value="dressy">Dressy — blouses, slacks, dress shirts</option>
+    </select>
     <label class="field-label">Name (optional)</label>
     <input type="text" id="add-name" placeholder="e.g. Blue denim jacket" />
     <div class="modal-actions">
@@ -187,6 +193,14 @@
     <button id="photo-view-close" class="photo-view-close">✕</button>
     <img id="photo-view-img" alt="">
     <p id="photo-view-name" class="photo-view-name"></p>
+    <label class="photo-view-field">
+      How dressy is it?
+      <select id="photo-view-formality">
+        <option value="casual">Casual</option>
+        <option value="everyday">Everyday</option>
+        <option value="dressy">Dressy</option>
+      </select>
+    </label>
   </div>
 </div>
 
@@ -212,11 +226,16 @@
       <li><strong>Neutrals go with almost anything.</strong> Black, white, grey, navy, brown, and beige/tan are versatile enough to pair with nearly any other color in your closet.</li>
       <li><strong>Analogous colors work well together.</strong> Colors that sit close together on the color wheel (like navy and teal, or red and orange) read as intentional rather than accidental.</li>
       <li><strong>Complementary colors make a bold, put-together look.</strong> Colors from opposite sides of the wheel (like red and green, or blue and orange) balance each other out.</li>
+      <li><strong>Dressiness should stay close.</strong> Mixing dressy with casual works when the two pieces are only one step apart — a dressy blouse with jeans reads as deliberate, but with athletic shorts it just reads as a mistake.</li>
+      <li><strong>A solid anchors any print.</strong> Pairing a patterned piece with a solid one is the safest combination there is. Two prints can work together, but only when their scales clearly differ — two prints of the same size compete with each other.</li>
     </ul>
+    <p class="photo-tip">Patterns are detected automatically from your photos. Dressiness comes from what you pick when adding an item — you can change it any time by tapping an item in the Clothes tab.</p>
     <label class="field-label">Read more</label>
     <div class="sources-links">
       <a href="https://so-sew-easy.com/color-theory-in-fashion-the-clothing-color-wheel/" target="_blank" rel="noopener">So Sew Easy - Color Theory In Fashion</a>
       <a href="https://www.bridgetteraes.com/2020/11/02/how-to-work-with-neutrals-in-your-wardrobe/" target="_blank" rel="noopener">Bridgette Raes Style Group - Working With Neutrals</a>
+      <a href="https://www.masterclass.com/articles/how-to-mix-prints-and-patterns-to-create-a-stylish-outfit" target="_blank" rel="noopener">MasterClass - How To Mix Prints And Patterns</a>
+      <a href="https://www.stylebycher.com/taxonomy/formality-ladder" target="_blank" rel="noopener">Style by Cher - The Formality Ladder</a>
     </div>
     <div class="modal-actions">
       <button id="sources-cancel" class="ghost-btn">Close</button>
@@ -239,8 +258,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=20"></script>
-<script src="db.js?v=20"></script>
-<script src="app.js?v=20"></script>
+<script src="bg-remove.js?v=21"></script>
+<script src="db.js?v=21"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 34;
+const APP_VERSION = 35;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -66,11 +66,19 @@ const builder = {
 let pickerTargetCat = null;
 let deckIndex = 0;
 
+let photoViewItem = null;
 function openPhotoView(item) {
+  photoViewItem = item;
   $("#photo-view-img").src = item.image;
   $("#photo-view-name").textContent = item.name || "";
+  $("#photo-view-formality").value = item.formality || "everyday";
   $("#photo-view-modal").classList.add("open");
 }
+$("#photo-view-formality").addEventListener("change", async (e) => {
+  if (!photoViewItem) return;
+  photoViewItem.formality = e.target.value;
+  await DB.addItem(photoViewItem);
+});
 $("#photo-view-close").addEventListener("click", () => $("#photo-view-modal").classList.remove("open"));
 $("#photo-view-modal").addEventListener("click", (e) => {
   if (e.target.id === "photo-view-modal") $("#photo-view-modal").classList.remove("open");
@@ -317,6 +325,7 @@ $("#add-save").addEventListener("click", async () => {
   let shoulder = null;
   let color = null;
   let bgColor = null;
+  let pattern = null;
   try {
     const img = await loadImageFromSrc(pendingImage);
     const processed = await removeBackground(img);
@@ -324,6 +333,7 @@ $("#add-save").addEventListener("click", async () => {
     shoulder = processed.shoulder;
     color = processed.color;
     bgColor = processed.bgColor;
+    pattern = processed.pattern;
   } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
@@ -332,7 +342,9 @@ $("#add-save").addEventListener("click", async () => {
     shoulder,
     color,
     bgColor,
+    pattern,
     category: $("#add-category").value,
+    formality: $("#add-formality").value,
     name: $("#add-name").value.trim(),
     createdAt: Date.now()
   };
@@ -703,6 +715,38 @@ function outfitColorScore(colorA, colorB) {
   return -1; // hues fight each other without being complementary
 }
 
+// Stylists describe formality as a ladder, where a deliberate high-low
+// contrast reads as intentional only when the pieces sit one rung apart -
+// two or more rungs apart is what makes an outfit look like a mistake
+// instead of a choice. Items saved before this existed have no formality
+// set, which scores as 0 rather than penalising them.
+const FORMALITY_RANK = { casual: 1, everyday: 2, dressy: 3 };
+function outfitFormalityScore(a, b) {
+  const rankA = FORMALITY_RANK[a], rankB = FORMALITY_RANK[b];
+  if (!rankA || !rankB) return 0;
+  const gap = Math.abs(rankA - rankB);
+  if (gap === 0) return 1;
+  if (gap === 1) return 0;
+  return -4;
+}
+
+// A solid anchors any print, so solid+print is the safest pairing there is.
+// Two prints can work, but only when their scales clearly differ - prints of
+// the same size compete for attention instead of complementing each other.
+function outfitPatternScore(a, b) {
+  if (!a || !b) return 0;
+  if (!a.patterned && !b.patterned) return 0;
+  if (a.patterned !== b.patterned) return 1;
+  return a.scale && b.scale && a.scale !== b.scale ? -1 : -3;
+}
+
+function outfitScore(top, bottom) {
+  const color = outfitColorScore(top.color, bottom.color);
+  return (color === null ? 2 : color) // no color data - treat as neutral/safe
+    + outfitFormalityScore(top.formality, bottom.formality)
+    + outfitPatternScore(top.pattern, bottom.pattern);
+}
+
 let lastSuggestKey = null;
 function suggestOutfit() {
   const tops = itemsCache.filter(i => i.category === "top");
@@ -714,8 +758,7 @@ function suggestOutfit() {
   const pairs = [];
   for (const t of tops) {
     for (const b of bottoms) {
-      const score = outfitColorScore(t.color, b.color);
-      pairs.push({ t, b, score: score === null ? 2 : score }); // no color data - treat as neutral/safe
+      pairs.push({ t, b, score: outfitScore(t, b) });
     }
   }
   const bestScore = Math.max(...pairs.map(p => p.score));
