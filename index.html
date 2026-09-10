@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Closet Companion</title>
 <meta name="theme-color" content="#7c5cff" />
-<link rel="manifest" href="manifest.json?v=21" />
+<link rel="manifest" href="manifest.json?v=22" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=21" />
+<link rel="stylesheet" href="styles.css?v=22" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -28,7 +28,7 @@
         👤 <span id="profile-name-label">Me</span>
       </button>
       <button id="sources-toggle" class="icon-btn sources-btn" title="How Suggest Outfit works">
-        <img class="sources-icon-img" src="assets/sources-icon.png?v=21" alt="" />
+        <img class="sources-icon-img" src="assets/sources-icon.png?v=22" alt="" />
       </button>
       <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
     </div>
@@ -46,14 +46,19 @@
         <h2>Bottoms</h2>
         <div class="item-grid" id="grid-bottom"></div>
       </div>
+      <div class="section-block" data-cat="onepiece">
+        <h2>One-pieces</h2>
+        <div class="item-grid" id="grid-onepiece"></div>
+      </div>
     </section>
 
     <!-- BUILDER VIEW -->
     <section id="view-builder" class="view">
       <div class="builder-toolbar">
         <div class="change-buttons-row">
-          <button id="change-top-btn" class="ghost-btn change-btn">👕 Change Top</button>
-          <button id="change-bottom-btn" class="ghost-btn change-btn">👖 Change Bottom</button>
+          <button id="change-top-btn" class="ghost-btn change-btn">👕 Top</button>
+          <button id="change-bottom-btn" class="ghost-btn change-btn">👖 Bottom</button>
+          <button id="change-onepiece-btn" class="ghost-btn change-btn">👗 One-piece</button>
         </div>
         <div class="toolbar-actions">
           <button id="backdrop-toggle" class="icon-btn" title="Change backdrop">🎨</button>
@@ -66,10 +71,11 @@
           <div id="mannequin-backdrop" class="mannequin-backdrop"></div>
           <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
           <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
+          <div class="slot-layer" id="slot-onepiece" data-cat="onepiece" hidden><span class="slot-label">Tap to add one-piece</span></div>
         </div>
       </div>
 
-      <p class="hint">Use Change Top/Bottom to pick items, drag to reposition. Pinch with two fingers to resize and rotate.</p>
+      <p class="hint">Pick a top and bottom, or a one-piece on its own, then drag to reposition. Pinch with two fingers to resize and rotate.</p>
 
       <button id="suggest-outfit" class="ghost-btn shuffle-btn">✨ Suggest Outfit</button>
       <p class="hint suggest-hint">Suggest Outfit picks pairings whose colors, dressiness, and patterns actually work together - not a random shuffle.</p>
@@ -135,6 +141,7 @@
     <select id="add-category">
       <option value="top">Top</option>
       <option value="bottom">Bottom</option>
+      <option value="onepiece">One-piece — dress, jumpsuit, romper</option>
     </select>
     <label class="field-label">How dressy is it?</label>
     <select id="add-formality">
@@ -258,8 +265,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=21"></script>
-<script src="db.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="bg-remove.js?v=22"></script>
+<script src="db.js?v=22"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

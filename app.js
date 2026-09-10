@@ -4,15 +4,21 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 35;
+const APP_VERSION = 36;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
   bottom: { x: 27, y: 49, w: 46, h: 38, r: 0 },
+  onepiece: { x: 25, y: 15, w: 50, h: 70, r: 0 },
   shoes: { x: 33, y: 79, w: 34, h: 11, r: 0 }
 };
-const CATEGORIES = ["top", "bottom"];
-const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
+const CATEGORIES = ["top", "bottom", "onepiece"];
+const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3, onepiece: 3 };
+// A dress, jumpsuit or romper covers the body on its own, so it is never
+// worn with a separate top and bottom - the builder and the suggester both
+// treat it as the whole outfit rather than one half of a pairing.
+const ONE_PIECE = "onepiece";
+const CATEGORY_LABELS = { top: "top", bottom: "bottom", onepiece: "one-piece", shoes: "shoes" };
 
 const BACKDROPS = [
   { name: "Auto", value: "auto" },
@@ -363,7 +369,19 @@ $("#clear-builder").addEventListener("click", () => {
 });
 
 function renderAllSlots() {
-  ["top", "bottom"].forEach(renderSlot);
+  ["top", "bottom", ONE_PIECE].forEach(renderSlot);
+  syncBuilderSlots();
+}
+
+// Keeps the stage showing either a one-piece or a top/bottom pair, never
+// both. The empty one-piece slot stays hidden rather than sitting over the
+// top and bottom slots as a third tap target covering most of the stage -
+// the toolbar button is how you reach for a dress instead.
+function syncBuilderSlots() {
+  const wearingOnePiece = !!builder.placements[ONE_PIECE];
+  $("#slot-onepiece").hidden = !wearingOnePiece;
+  $("#slot-top").hidden = wearingOnePiece;
+  $("#slot-bottom").hidden = wearingOnePiece;
 }
 
 function renderSlot(cat) {
@@ -376,7 +394,7 @@ function renderSlot(cat) {
     slot.classList.remove("filled");
     const label = document.createElement("span");
     label.className = "slot-label";
-    label.textContent = cat === "shoes" ? "Tap to pick shoe color" : `Tap to add ${cat}`;
+    label.textContent = cat === "shoes" ? "Tap to pick shoe color" : `Tap to add ${CATEGORY_LABELS[cat]}`;
     slot.appendChild(label);
     slot.onclick = () => pickerFn(cat);
     slot.style.left = ""; slot.style.top = ""; slot.style.width = ""; slot.style.height = ""; slot.style.zIndex = "";
@@ -413,6 +431,7 @@ function renderSlot(cat) {
 
 $("#change-top-btn").addEventListener("click", () => openPicker("top"));
 $("#change-bottom-btn").addEventListener("click", () => openPicker("bottom"));
+$("#change-onepiece-btn").addEventListener("click", () => openPicker(ONE_PIECE));
 
 function resetSlotDefaultRect(slot, cat) {
   const d = DEFAULT_PLACEMENT[cat];
@@ -556,12 +575,13 @@ function makeDraggable(slot, wrap, cat, placement) {
 // ---------- Picker modal ----------
 function openPicker(cat) {
   pickerTargetCat = cat;
-  $("#picker-title").textContent = `Choose a ${cat}`;
+  const label = CATEGORY_LABELS[cat];
+  $("#picker-title").textContent = `Choose a ${label}`;
   const grid = $("#picker-grid");
   grid.innerHTML = "";
   const items = itemsCache.filter(i => i.category === cat);
   if (items.length === 0) {
-    grid.innerHTML = `<div class="empty-grid-hint">No ${cat} items yet. Add some from the Clothes tab first.</div>`;
+    grid.innerHTML = `<div class="empty-grid-hint">No ${label} items yet. Add some from the Clothes tab first.</div>`;
   } else {
     items.forEach(item => {
       grid.appendChild(buildItemCard(item, {
@@ -576,7 +596,13 @@ function openPicker(cat) {
             h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
             r: existing ? (existing.r || 0) : 0
           };
-          renderSlot(cat);
+          if (cat === ONE_PIECE) {
+            delete builder.placements.top;
+            delete builder.placements.bottom;
+          } else {
+            delete builder.placements[ONE_PIECE];
+          }
+          renderAllSlots();
           refreshBackdrop();
           closePicker();
         }
@@ -594,7 +620,7 @@ $("#picker-cancel").addEventListener("click", closePicker);
 $("#picker-remove").addEventListener("click", () => {
   if (pickerTargetCat) {
     delete builder.placements[pickerTargetCat];
-    renderSlot(pickerTargetCat);
+    renderAllSlots();
     refreshBackdrop();
   }
   closePicker();
@@ -747,33 +773,50 @@ function outfitScore(top, bottom) {
     + outfitPatternScore(top.pattern, bottom.pattern);
 }
 
+// A one-piece has no pairing to judge - it is a single garment designed as
+// a complete outfit - so it enters the running at the score a well-matched
+// pair earns, and competes with them on equal footing.
+const ONE_PIECE_SCORE = 4;
+
 let lastSuggestKey = null;
 function suggestOutfit() {
   const tops = itemsCache.filter(i => i.category === "top");
   const bottoms = itemsCache.filter(i => i.category === "bottom");
-  if (!tops.length || !bottoms.length) {
-    alert("Add at least one top and one bottom to your closet first.");
-    return;
-  }
-  const pairs = [];
+  const onePieces = itemsCache.filter(i => i.category === ONE_PIECE);
+
+  const options = [];
   for (const t of tops) {
     for (const b of bottoms) {
-      pairs.push({ t, b, score: outfitScore(t, b) });
+      options.push({ top: t, bottom: b, score: outfitScore(t, b) });
     }
   }
-  const bestScore = Math.max(...pairs.map(p => p.score));
+  for (const o of onePieces) options.push({ onePiece: o, score: ONE_PIECE_SCORE });
+
+  if (!options.length) {
+    alert("Add a dress, or at least one top and one bottom, to your closet first.");
+    return;
+  }
+  const bestScore = Math.max(...options.map(p => p.score));
   // Prefer the best-scoring pairings, but only fall down a tier if that
   // tier is too thin to give any real variety day to day.
-  let pool = pairs.filter(p => p.score === bestScore);
-  if (pool.length < 3) pool = pairs.filter(p => p.score >= bestScore - 1);
+  let pool = options.filter(p => p.score === bestScore);
+  if (pool.length < 3) pool = options.filter(p => p.score >= bestScore - 1);
+  const keyOf = (p) => p.onePiece ? p.onePiece.id : p.top.id + ":" + p.bottom.id;
   let pick;
   for (let i = 0; i < 6; i++) {
     pick = pool[Math.floor(Math.random() * pool.length)];
-    const key = pick.t.id + ":" + pick.b.id;
+    const key = keyOf(pick);
     if (key !== lastSuggestKey || pool.length === 1) { lastSuggestKey = key; break; }
   }
-  builder.placements.top = { itemId: pick.t.id, ...DEFAULT_PLACEMENT.top };
-  builder.placements.bottom = { itemId: pick.b.id, ...DEFAULT_PLACEMENT.bottom };
+  delete builder.placements.top;
+  delete builder.placements.bottom;
+  delete builder.placements[ONE_PIECE];
+  if (pick.onePiece) {
+    builder.placements[ONE_PIECE] = { itemId: pick.onePiece.id, ...DEFAULT_PLACEMENT[ONE_PIECE] };
+  } else {
+    builder.placements.top = { itemId: pick.top.id, ...DEFAULT_PLACEMENT.top };
+    builder.placements.bottom = { itemId: pick.bottom.id, ...DEFAULT_PLACEMENT.bottom };
+  }
   renderAllSlots();
   refreshBackdrop();
 }
@@ -990,9 +1033,12 @@ function initTheme() {
 // item's own original photo background, so the cutout blends in. Picking
 // an explicit color overrides that until "Auto" is chosen again.
 function getAutoBackdropColor() {
-  const topItem = builder.placements.top && itemsCache.find(i => i.id === builder.placements.top.itemId);
-  const bottomItem = builder.placements.bottom && itemsCache.find(i => i.id === builder.placements.bottom.itemId);
-  return (topItem && topItem.bgColor) || (bottomItem && bottomItem.bgColor) || "#ffffff";
+  const placed = (cat) => builder.placements[cat] && itemsCache.find(i => i.id === builder.placements[cat].itemId);
+  const onePieceItem = placed(ONE_PIECE), topItem = placed("top"), bottomItem = placed("bottom");
+  return (onePieceItem && onePieceItem.bgColor)
+    || (topItem && topItem.bgColor)
+    || (bottomItem && bottomItem.bgColor)
+    || "#ffffff";
 }
 function getBackdrop() {
   let stored = null;

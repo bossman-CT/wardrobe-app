@@ -416,8 +416,14 @@ html, body {
 }
 .slot-layer.filled .slot-label { display: none; }
 
+/* The display rule on .slot-layer beats the hidden attribute on its own -
+   the same trap that kept the update banner permanently on screen - so
+   hiding a slot needs this explicit guard. */
+.slot-layer[hidden] { display: none; }
+
 #slot-top { left: 26%; top: 17%; width: 48%; height: 29%; }
 #slot-bottom { left: 27%; top: 45%; width: 46%; height: 39%; }
+#slot-onepiece { left: 25%; top: 15%; width: 50%; height: 70%; }
 #slot-shoes { left: 33%; top: 79%; width: 34%; height: 11%; }
 
 .placed-item {
