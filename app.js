@@ -738,6 +738,24 @@ $("#backdrop-toggle").addEventListener("click", openBackdropPicker);
 $("#backdrop-cancel").addEventListener("click", closeBackdropPicker);
 
 // ---------- Service worker / update banner ----------
+// One-time cleanup for phones that got stuck showing the update banner
+// from before update checks were forced to bypass the cache. Wipes the
+// old service worker registration and its Cache Storage (NOT IndexedDB,
+// so closet items/outfits are untouched) and re-registers fresh.
+async function resetStuckServiceWorker() {
+  const FLAG = "wardrobe-sw-reset-1";
+  let alreadyReset = false;
+  try { alreadyReset = localStorage.getItem(FLAG) === "1"; } catch (e) { /* ignore */ }
+  if (alreadyReset || !("serviceWorker" in navigator)) return;
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const keys = await caches.keys();
+    for (const key of keys) await caches.delete(key);
+  } catch (e) { /* ignore */ }
+  try { localStorage.setItem(FLAG, "1"); } catch (e) { /* ignore */ }
+}
+
 function initServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
@@ -783,6 +801,7 @@ async function init() {
   await loadItems();
   refreshBackdrop();
   await loadOutfits();
+  await resetStuckServiceWorker();
   initServiceWorker();
 }
 init();
