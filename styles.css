@@ -447,7 +447,7 @@ html, body {
   display: flex;
   flex-direction: column;
 }
-.outfit-card .placed-item { cursor: default; }
+.outfit-card .placed-item { cursor: default; touch-action: pan-x; }
 .outfit-card .outfit-stage::after {
   content: "";
   position: absolute;
