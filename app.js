@@ -532,7 +532,8 @@ $("#save-outfit").addEventListener("click", () => {
     alert("Add at least one item before saving.");
     return;
   }
-  $("#outfit-name-input").value = "";
+  const editing = builder.editingId && outfitsCache.find(o => o.id === builder.editingId);
+  $("#outfit-name-input").value = editing ? editing.name : "";
   $("#name-modal").classList.add("open");
 });
 $("#name-cancel").addEventListener("click", () => $("#name-modal").classList.remove("open"));
