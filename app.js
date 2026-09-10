@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },

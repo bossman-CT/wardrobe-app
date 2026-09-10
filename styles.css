@@ -335,6 +335,21 @@ html, body {
   line-height: 1;
   padding: 0;
 }
+.sources-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sources-icon-base { font-size: 20px; }
+.sources-icon-badge {
+  position: absolute;
+  top: 42%;
+  left: 58%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  letter-spacing: -2px;
+}
 .change-buttons-row {
   display: flex;
   gap: 8px;
