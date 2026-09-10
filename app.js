@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 27;
+const APP_VERSION = 28;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -417,7 +417,7 @@ function openPicker(cat) {
   grid.innerHTML = "";
   const items = itemsCache.filter(i => i.category === cat);
   if (items.length === 0) {
-    grid.innerHTML = `<div class="empty-grid-hint">No ${cat} items yet. Add some from the Closet tab first.</div>`;
+    grid.innerHTML = `<div class="empty-grid-hint">No ${cat} items yet. Add some from the Clothes tab first.</div>`;
   } else {
     items.forEach(item => {
       grid.appendChild(buildItemCard(item, {
