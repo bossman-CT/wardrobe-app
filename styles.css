@@ -349,6 +349,15 @@ html, body {
   transform: translate(-50%, -50%);
   font-size: 8px;
   letter-spacing: -2px;
+  z-index: 2;
+}
+.sources-icon-badge-lower {
+  position: absolute;
+  top: 64%;
+  left: 38%;
+  transform: translate(-50%, -50%);
+  font-size: 7px;
+  z-index: 1;
 }
 .change-buttons-row {
   display: flex;
