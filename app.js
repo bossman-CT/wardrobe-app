@@ -778,9 +778,20 @@ function initServiceWorker() {
     location.reload();
   });
 
+  // Deterministic refresh: rather than relying on postMessage/skipWaiting
+  // handoff (which no-ops if reg.waiting is empty by the time this fires),
+  // just unregister everything, drop the cache, and hard-reload. IndexedDB
+  // (closet items/outfits) lives in separate storage and isn't touched.
   $("#update-reload-btn").addEventListener("click", async () => {
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+    $("#update-reload-btn").disabled = true;
+    $("#update-reload-btn").textContent = "Updating...";
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) await reg.unregister();
+      const keys = await caches.keys();
+      for (const key of keys) await caches.delete(key);
+    } catch (e) { /* ignore */ }
+    location.reload();
   });
 }
 
