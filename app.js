@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 29;
+const APP_VERSION = 30;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -209,6 +209,8 @@ function openProfileModal() {
 function closeProfileModal() {
   $("#profile-modal").classList.remove("open");
 }
+$("#sources-toggle").addEventListener("click", () => $("#sources-modal").classList.add("open"));
+$("#sources-cancel").addEventListener("click", () => $("#sources-modal").classList.remove("open"));
 $("#profile-toggle").addEventListener("click", openProfileModal);
 $("#profile-cancel").addEventListener("click", closeProfileModal);
 $("#profile-add").addEventListener("click", async () => {

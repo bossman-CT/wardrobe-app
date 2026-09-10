@@ -615,6 +615,27 @@ html, body {
   margin: 0 0 14px;
   line-height: 1.4;
 }
+.sources-rules {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.sources-rules li { margin-bottom: 10px; }
+.sources-rules li:last-child { margin-bottom: 0; }
+.sources-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.sources-links a {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.sources-links a:active { opacity: 0.7; }
 .photo-input-row {
   display: flex;
   gap: 10px;

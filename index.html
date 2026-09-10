@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Closet Companion</title>
 <meta name="theme-color" content="#7c5cff" />
-<link rel="manifest" href="manifest.json" />
+<link rel="manifest" href="manifest.json?v=16" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=15" />
+<link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -27,6 +27,7 @@
       <button id="profile-toggle" class="profile-btn" title="Switch profile">
         👤 <span id="profile-name-label">Me</span>
       </button>
+      <button id="sources-toggle" class="icon-btn" title="How Suggest Outfit works">📚</button>
       <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
     </div>
   </header>
@@ -200,6 +201,29 @@
   </div>
 </div>
 
+<!-- SOURCES MODAL -->
+<div id="sources-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>How Suggest Outfit Works</h2>
+    <p class="photo-tip">Suggest Outfit scores every top/bottom pairing in your closet and favors the combinations stylists consider flattering, instead of picking at random.</p>
+    <ul class="sources-rules">
+      <li><strong>Neutrals go with almost anything.</strong> Black, white, grey, navy, brown, and beige/tan are versatile enough to pair with nearly any other color in your closet.</li>
+      <li><strong>Analogous colors work well together.</strong> Colors that sit close together on the color wheel (like navy and teal, or red and orange) read as intentional rather than accidental.</li>
+      <li><strong>Complementary colors make a bold, put-together look.</strong> Colors from opposite sides of the wheel (like red and green, or blue and orange) balance each other out.</li>
+      <li><strong>Black + brown is fine.</strong> It's a famously outdated styling "rule" - modern stylists agree the combo works, so we don't block it.</li>
+    </ul>
+    <label class="field-label">Read more</label>
+    <div class="sources-links">
+      <a href="https://so-sew-easy.com/color-theory-in-fashion-the-clothing-color-wheel/" target="_blank" rel="noopener">So Sew Easy - Color Theory In Fashion</a>
+      <a href="https://www.thezoereport.com/fashion/how-to-wear-black-brown-together" target="_blank" rel="noopener">The Zoe Report - How To Wear Black & Brown Together</a>
+      <a href="https://www.merricksart.com/black-and-brown/" target="_blank" rel="noopener">Merrick's Art - Can You Wear Black and Brown Together?</a>
+    </div>
+    <div class="modal-actions">
+      <button id="sources-cancel" class="ghost-btn">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- PROFILES MODAL -->
 <div id="profile-modal" class="modal-overlay">
   <div class="modal">
@@ -215,8 +239,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=15"></script>
-<script src="db.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="bg-remove.js?v=16"></script>
+<script src="db.js?v=16"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
