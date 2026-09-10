@@ -397,14 +397,14 @@ html, body {
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  gap: 16px;
-  padding: 0 12%;
+  gap: 12px;
+  padding: 0 5%;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .outfit-deck::-webkit-scrollbar { display: none; }
 .outfit-card {
-  flex: 0 0 76%;
+  flex: 0 0 90%;
   scroll-snap-align: center;
   background: var(--photo-surface);
   border: 1px solid var(--border);
