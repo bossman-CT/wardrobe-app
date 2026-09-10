@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 28;
+const APP_VERSION = 29;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -56,6 +56,8 @@ function shoeShapeSVG(color) {
 
 let itemsCache = [];
 let outfitsCache = [];
+let profilesCache = [];
+let activeProfileId = null;
 
 const builder = {
   placements: {} // cat -> { itemId, x, y, w, h, r }
@@ -93,9 +95,136 @@ function switchView(view) {
   if (view === "builder") fitStageBox($("#mannequin-stage").parentElement);
 }
 
+// ---------- Profiles ----------
+// Each profile keeps its own separate closet/outfits (e.g. one for you, one
+// for a kid) - items/outfits are tagged with a profileId and every load
+// filters down to whichever profile is currently active.
+function getStoredActiveProfileId() {
+  try { return localStorage.getItem("wardrobe-active-profile"); } catch (e) { return null; }
+}
+function setStoredActiveProfileId(id) {
+  try { localStorage.setItem("wardrobe-active-profile", id); } catch (e) { /* ignore */ }
+}
+
+// Runs once on startup: makes sure at least one profile exists, and - for
+// anyone updating from before profiles existed - assigns their existing
+// (unscoped) items/outfits to a new default profile instead of orphaning
+// them.
+async function ensureProfilesReady() {
+  profilesCache = await DB.getAllProfiles();
+
+  if (profilesCache.length === 0) {
+    const defaultProfile = { id: uid(), name: "Me", createdAt: Date.now() };
+    await DB.addProfile(defaultProfile);
+    profilesCache = [defaultProfile];
+
+    const existingItems = await DB.getAllItems();
+    const existingOutfits = await DB.getAllOutfits();
+    for (const item of existingItems) {
+      if (!item.profileId) { item.profileId = defaultProfile.id; await DB.addItem(item); }
+    }
+    for (const outfit of existingOutfits) {
+      if (!outfit.profileId) { outfit.profileId = defaultProfile.id; await DB.addOutfit(outfit); }
+    }
+  }
+
+  const stored = getStoredActiveProfileId();
+  activeProfileId = profilesCache.some(p => p.id === stored) ? stored : profilesCache[0].id;
+  setStoredActiveProfileId(activeProfileId);
+  updateProfileLabel();
+}
+
+function updateProfileLabel() {
+  const profile = profilesCache.find(p => p.id === activeProfileId);
+  $("#profile-name-label").textContent = profile ? profile.name : "Me";
+}
+
+async function activateProfile(id) {
+  activeProfileId = id;
+  setStoredActiveProfileId(id);
+  updateProfileLabel();
+  builder.placements = {};
+  builder.editingId = null;
+  deckIndex = 0;
+  renderAllSlots();
+  refreshBackdrop();
+  await loadItems();
+  await loadOutfits();
+  if (currentView() === "outfits") renderOutfitDeck();
+}
+
+function switchProfile(id) {
+  if (id !== activeProfileId) activateProfile(id);
+  closeProfileModal();
+}
+
+async function deleteProfile(id) {
+  const items = await DB.getAllItems();
+  const outfits = await DB.getAllOutfits();
+  for (const item of items) if (item.profileId === id) await DB.deleteItem(item.id);
+  for (const outfit of outfits) if (outfit.profileId === id) await DB.deleteOutfit(outfit.id);
+  await DB.deleteProfile(id);
+  profilesCache = await DB.getAllProfiles();
+  if (activeProfileId === id) await activateProfile(profilesCache[0].id);
+  renderProfileList();
+}
+
+function renderProfileList() {
+  const list = $("#profile-list");
+  list.innerHTML = "";
+  profilesCache.forEach(profile => {
+    const row = document.createElement("div");
+    row.className = "profile-row" + (profile.id === activeProfileId ? " active" : "");
+    const name = document.createElement("span");
+    name.className = "profile-row-name";
+    name.textContent = profile.name;
+    row.appendChild(name);
+    if (profile.id === activeProfileId) {
+      const check = document.createElement("span");
+      check.className = "profile-row-check";
+      check.textContent = "✓";
+      row.appendChild(check);
+    }
+    if (profilesCache.length > 1) {
+      const del = document.createElement("button");
+      del.className = "profile-row-delete";
+      del.textContent = "Delete";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete "${profile.name}" and everything in their closet? This can't be undone.`)) return;
+        deleteProfile(profile.id);
+      });
+      row.appendChild(del);
+    }
+    row.addEventListener("click", () => switchProfile(profile.id));
+    list.appendChild(row);
+  });
+}
+
+function openProfileModal() {
+  renderProfileList();
+  $("#new-profile-input").value = "";
+  $("#profile-modal").classList.add("open");
+}
+function closeProfileModal() {
+  $("#profile-modal").classList.remove("open");
+}
+$("#profile-toggle").addEventListener("click", openProfileModal);
+$("#profile-cancel").addEventListener("click", closeProfileModal);
+$("#profile-add").addEventListener("click", async () => {
+  const name = $("#new-profile-input").value.trim();
+  if (!name) return;
+  const profile = { id: uid(), name, createdAt: Date.now() };
+  await DB.addProfile(profile);
+  profilesCache = await DB.getAllProfiles();
+  $("#new-profile-input").value = "";
+  await activateProfile(profile.id);
+  renderProfileList();
+});
+
 // ---------- Closet ----------
 async function loadItems() {
-  itemsCache = await DB.getAllItems();
+  itemsCache = (await DB.getAllItems()).filter(i => i.profileId === activeProfileId);
   renderCloset();
 }
 
@@ -196,6 +325,7 @@ $("#add-save").addEventListener("click", async () => {
   } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
+    profileId: activeProfileId,
     image,
     shoulder,
     color,
@@ -618,6 +748,7 @@ $("#name-cancel").addEventListener("click", () => $("#name-modal").classList.rem
 $("#name-save").addEventListener("click", async () => {
   const outfit = {
     id: builder.editingId || uid(),
+    profileId: activeProfileId,
     name: $("#outfit-name-input").value.trim() || "Untitled outfit",
     backdrop: getBackdrop(),
     placements: JSON.parse(JSON.stringify(builder.placements)),
@@ -632,7 +763,7 @@ $("#name-save").addEventListener("click", async () => {
 
 // ---------- Outfits deck ----------
 async function loadOutfits() {
-  outfitsCache = await DB.getAllOutfits();
+  outfitsCache = (await DB.getAllOutfits()).filter(o => o.profileId === activeProfileId);
   outfitsCache.sort((a, b) => b.createdAt - a.createdAt);
   if (deckIndex >= outfitsCache.length) deckIndex = Math.max(0, outfitsCache.length - 1);
 }
@@ -938,6 +1069,7 @@ async function init() {
   renderAllSlots();
   stageResizeObserver.observe($("#mannequin-stage").parentElement);
   await handleResetParam();
+  await ensureProfilesReady();
   await loadItems();
   refreshBackdrop();
   await loadOutfits();

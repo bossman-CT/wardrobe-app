@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Virtual Wardrobe</title>
+<title>Closet Companion</title>
 <meta name="theme-color" content="#7c5cff" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=14" />
+<link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -22,8 +22,13 @@
   </div>
 
   <header class="topbar">
-    <h1>Virtual Wardrobe</h1>
-    <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
+    <h1>Closet Companion</h1>
+    <div class="topbar-actions">
+      <button id="profile-toggle" class="profile-btn" title="Switch profile">
+        👤 <span id="profile-name-label">Me</span>
+      </button>
+      <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
+    </div>
   </header>
 
   <main id="views">
@@ -195,8 +200,23 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=14"></script>
-<script src="db.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<!-- PROFILES MODAL -->
+<div id="profile-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Profiles</h2>
+    <p class="photo-tip">Each profile keeps its own separate closet and outfits - handy for dressing more than one person from the same app.</p>
+    <div id="profile-list" class="profile-list"></div>
+    <label class="field-label">New profile name</label>
+    <input type="text" id="new-profile-input" placeholder="e.g. Emma" />
+    <div class="modal-actions">
+      <button id="profile-cancel" class="ghost-btn">Close</button>
+      <button id="profile-add" class="primary-btn">Add Profile</button>
+    </div>
+  </div>
+</div>
+
+<script src="bg-remove.js?v=15"></script>
+<script src="db.js?v=15"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

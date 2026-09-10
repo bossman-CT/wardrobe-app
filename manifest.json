@@ -1,6 +1,6 @@
 {
-  "name": "Virtual Wardrobe",
-  "short_name": "Wardrobe",
+  "name": "Closet Companion",
+  "short_name": "Closet Companion",
   "description": "Virtual closet and outfit builder",
   "start_url": ".",
   "display": "standalone",

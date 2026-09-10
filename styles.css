@@ -147,7 +147,21 @@ html, body {
   border-bottom: 1px solid var(--border);
   background: var(--card-bg);
 }
-.topbar h1 { margin: 0; font-size: 20px; font-weight: 700; }
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .theme-toggle {
   width: 36px;
   height: 36px;
@@ -157,6 +171,25 @@ html, body {
   font-size: 16px;
   line-height: 1;
   padding: 0;
+}
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  max-width: 110px;
+  padding: 0 12px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.profile-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #views {
@@ -638,6 +671,40 @@ select, input[type="text"] {
   grid-template-columns: repeat(3, 1fr);
   max-height: 50vh;
   overflow-y: auto;
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.profile-row.active { border-color: var(--accent); background: rgba(124, 92, 255, 0.08); }
+.profile-row-name {
+  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-row-check { color: var(--accent); font-weight: 700; }
+.profile-row-delete {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 13px;
+  padding: 4px 8px;
 }
 
 .backdrop-swatch-grid {
