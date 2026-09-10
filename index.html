@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Wardrobe</title>
+<title>Virtual Wardrobe</title>
 <meta name="theme-color" content="#7c5cff" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="assets/icon.svg" />
@@ -12,8 +12,13 @@
 <body>
 <div id="app">
 
+  <div id="update-banner" class="update-banner" hidden>
+    <span>A new version is available</span>
+    <button id="update-reload-btn">Refresh</button>
+  </div>
+
   <header class="topbar">
-    <h1>Wardrobe</h1>
+    <h1>Virtual Wardrobe</h1>
     <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
   </header>
 
@@ -34,10 +39,9 @@
     <!-- BUILDER VIEW -->
     <section id="view-builder" class="view">
       <div class="builder-toolbar">
-        <div class="gender-toggle">
-          <button class="gender-btn active" data-gender="female">Female</button>
-          <button class="gender-btn" data-gender="male">Male</button>
-          <button class="gender-btn" data-gender="none">None</button>
+        <div class="change-buttons-row">
+          <button id="change-top-btn" class="ghost-btn change-btn">👕 Change Top</button>
+          <button id="change-bottom-btn" class="ghost-btn change-btn">👖 Change Bottom</button>
         </div>
         <div class="toolbar-actions">
           <button id="backdrop-toggle" class="icon-btn" title="Change backdrop">🎨</button>
@@ -45,30 +49,13 @@
         </div>
       </div>
 
-      <div class="change-buttons-row">
-        <button id="change-top-btn" class="ghost-btn change-btn">👕 Change Top</button>
-        <button id="change-bottom-btn" class="ghost-btn change-btn">👖 Change Bottom</button>
+      <div class="mannequin-stage" id="mannequin-stage">
+        <div id="mannequin-backdrop" class="mannequin-backdrop"></div>
+        <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
+        <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
       </div>
 
-      <div class="stage-row">
-        <div class="mannequin-stage" id="mannequin-stage">
-          <div id="mannequin-backdrop" class="mannequin-backdrop"></div>
-          <img id="mannequin-photo" class="mannequin-photo" alt="">
-          <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
-          <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
-        </div>
-
-        <div class="resize-rail">
-          <div class="resize-rail-section">
-            <input type="range" id="top-size-slider" class="vslider" min="20" max="85" value="48" disabled>
-          </div>
-          <div class="resize-rail-section">
-            <input type="range" id="bottom-size-slider" class="vslider" min="20" max="85" value="46" disabled>
-          </div>
-        </div>
-      </div>
-
-      <p class="hint">Use Change Top/Bottom to pick items, drag to reposition, and the side sliders to resize. Twist two fingers on the bottom to rotate it.</p>
+      <p class="hint">Use Change Top/Bottom to pick items, drag to reposition. Pinch with two fingers to resize, twist to rotate the bottom.</p>
 
       <button id="shuffle-outfit" class="ghost-btn shuffle-btn">🎲 Random Outfit</button>
       <button id="save-outfit" class="primary-btn">Save Outfit</button>
@@ -113,7 +100,7 @@
 <div id="add-modal" class="modal-overlay">
   <div class="modal">
     <h2>Add Clothing</h2>
-    <p class="photo-tip">Lay it flat or hang it facing forward on a plain background (a bed or floor works great). For tops, keep it spread out with the shoulders visible — the app lines shirts up on the mannequin automatically using the shoulder line.</p>
+    <p class="photo-tip">Lay it flat or hang it facing forward on a plain background (a bed or floor works great) — it's easier to remove the background cleanly and the color blends nicely into the outfit view.</p>
     <div class="photo-input-row">
       <label class="photo-btn">
         Take Photo

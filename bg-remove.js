@@ -63,6 +63,9 @@ function removeBackground(img, { localTolerance = 26, seedTolerance = 55, global
     // patch of background happens to locally resemble it.
     const median = (arr) => { const s = arr.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
     const globalR = median(borderR), globalG = median(borderG), globalB = median(borderB);
+    // The photo's own backdrop color - lets the mannequin stage's backdrop
+    // match it automatically so the cutout blends in seamlessly.
+    const bgColor = `rgb(${globalR}, ${globalG}, ${globalB})`;
 
     function tryAdd(x, y, fromIdx) {
       if (x < 0 || x >= cw || y < 0 || y >= ch) return;
@@ -156,6 +159,6 @@ function removeBackground(img, { localTolerance = 26, seedTolerance = 55, global
 
     for (let i = 0; i < n; i++) data[i * 4 + 3] = Math.round(alpha[i]);
     ctx.putImageData(imageData, 0, 0);
-    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder, color });
+    resolve({ dataUrl: canvas.toDataURL("image/png"), shoulder, color, bgColor });
   });
 }

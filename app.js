@@ -6,18 +6,8 @@ const DEFAULT_PLACEMENT = {
 const CATEGORIES = ["top", "bottom"];
 const LAYER_ORDER = { shoes: 1, bottom: 2, top: 3 };
 
-const MANNEQUIN_PHOTO = { female: "assets/mannequin/female-cutout.png", male: "assets/mannequin/male-cutout.png" };
-
-// Where each mannequin photo's own shoulder line sits, measured directly
-// from the source images (widest point of the torso in the top ~40%).
-// The mannequin-stage aspect ratio (2:3) matches these photos exactly, so
-// these fractions map straight onto stage percentages with no conversion.
-const MANNEQUIN_SHOULDER = {
-  female: { y: 16.51, centerX: 51.02, width: 36.56 },
-  male: { y: 16.20, centerX: 50.94, width: 40.31 }
-};
-
 const BACKDROPS = [
+  { name: "Auto", value: "auto" },
   { name: "White", value: "#ffffff" },
   { name: "Soft Grey", value: "#e8e6ef" },
   { name: "Turquoise", value: "linear-gradient(160deg,#2dd4c8,#1a9e94)" },
@@ -56,27 +46,11 @@ function shoeShapeSVG(color) {
   </svg>`;
 }
 
-function autoTopPlacement(item, gender) {
-  if (gender === "none") return { ...DEFAULT_PLACEMENT.top };
-  const s = item && item.shoulder;
-  const shoulder = MANNEQUIN_SHOULDER[gender] || MANNEQUIN_SHOULDER.female;
-  if (!s || !s.widthFrac) return { ...DEFAULT_PLACEMENT.top };
-  // mannequin-stage aspect ratio is 2:3 (width:height) - converts a
-  // stage-width-% size into the equivalent stage-height-% for this photo's
-  // own aspect ratio, so the box keeps the garment photo's proportions.
-  const w = clamp(shoulder.width / s.widthFrac, 20, 80);
-  const h = clamp(w * (2 / 3) * s.imgAspect, 8, 85);
-  const x = clamp(shoulder.centerX - s.xFrac * w, -10, 100);
-  const y = clamp(shoulder.y - s.yFrac * h, -10, 100);
-  return { x, y, w, h, r: 0 };
-}
-
 let itemsCache = [];
 let outfitsCache = [];
 
 const builder = {
-  gender: "female",
-  placements: {} // cat -> { itemId, x, y, w, h }
+  placements: {} // cat -> { itemId, x, y, w, h, r }
 };
 
 let pickerTargetCat = null;
@@ -202,18 +176,21 @@ $("#add-save").addEventListener("click", async () => {
   let image = pendingImage;
   let shoulder = null;
   let color = null;
+  let bgColor = null;
   try {
     const img = await loadImageFromSrc(pendingImage);
     const processed = await removeBackground(img);
     image = processed.dataUrl;
     shoulder = processed.shoulder;
     color = processed.color;
+    bgColor = processed.bgColor;
   } catch (e) { /* fall back to the original photo if processing fails */ }
   const item = {
     id: uid(),
     image,
     shoulder,
     color,
+    bgColor,
     category: $("#add-category").value,
     name: $("#add-name").value.trim(),
     createdAt: Date.now()
@@ -225,31 +202,12 @@ $("#add-save").addEventListener("click", async () => {
 });
 
 // ---------- Builder ----------
-$all(".gender-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    builder.gender = btn.dataset.gender;
-    $all(".gender-btn").forEach(b => b.classList.toggle("active", b === btn));
-    renderMannequinBase();
-  });
-});
-
 $("#clear-builder").addEventListener("click", () => {
   if (!confirm("Clear the current outfit?")) return;
   builder.placements = {};
   renderAllSlots();
+  refreshBackdrop();
 });
-
-function renderMannequinBase() {
-  const photo = $("#mannequin-photo");
-  if (builder.gender === "none") {
-    photo.hidden = true;
-    photo.removeAttribute("src");
-  } else {
-    photo.hidden = false;
-    photo.src = MANNEQUIN_PHOTO[builder.gender];
-  }
-  $("#mannequin-backdrop").style.background = getBackdrop();
-}
 
 function renderAllSlots() {
   ["top", "bottom"].forEach(renderSlot);
@@ -270,7 +228,6 @@ function renderSlot(cat) {
     slot.onclick = () => pickerFn(cat);
     slot.style.left = ""; slot.style.top = ""; slot.style.width = ""; slot.style.height = ""; slot.style.zIndex = "";
     resetSlotDefaultRect(slot, cat);
-    syncSizeSlider(cat);
     return;
   }
   slot.classList.remove("empty");
@@ -282,7 +239,6 @@ function renderSlot(cat) {
   slot.style.width = placement.w + "%";
   slot.style.height = placement.h + "%";
   slot.style.zIndex = LAYER_ORDER[cat] || 0;
-  syncSizeSlider(cat);
 
   const rotatable = cat !== "top";
   const wrap = document.createElement("div");
@@ -307,34 +263,6 @@ function renderSlot(cat) {
   if (rotatable) makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
 }
 
-function syncSizeSlider(cat) {
-  const slider = $(`#${cat}-size-slider`);
-  if (!slider) return;
-  const placement = builder.placements[cat];
-  if (!placement) {
-    slider.disabled = true;
-    return;
-  }
-  slider.disabled = false;
-  slider.value = Math.round(placement.w);
-}
-
-function applySliderResize(cat, newSize) {
-  const placement = builder.placements[cat];
-  if (!placement) return;
-  const ratio = placement.h / placement.w;
-  const cx = placement.x + placement.w / 2, cy = placement.y + placement.h / 2;
-  const w = clamp(newSize, 20, MAX_ITEM_SIZE);
-  const h = clamp(w * ratio, 8, MAX_ITEM_SIZE);
-  placement.w = w;
-  placement.h = h;
-  placement.x = cx - w / 2;
-  placement.y = cy - h / 2;
-  renderSlot(cat);
-}
-
-$("#top-size-slider").addEventListener("input", (e) => applySliderResize("top", Number(e.target.value)));
-$("#bottom-size-slider").addEventListener("input", (e) => applySliderResize("bottom", Number(e.target.value)));
 $("#change-top-btn").addEventListener("click", () => openPicker("top"));
 $("#change-bottom-btn").addEventListener("click", () => openPicker("bottom"));
 
@@ -348,10 +276,11 @@ function resetSlotDefaultRect(slot, cat) {
 
 const MAX_ITEM_SIZE = 85;
 
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function angleOf(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
 
-// Single finger drags the item; with a rotatable item, a second finger
-// twists it in place (rotation only - size is controlled by the side sliders).
+// Single finger drags the item; a second finger pinches to resize (anchored
+// on the item's own center) and, on a rotatable item, twists to rotate too.
 function makeDraggable(slot, wrap, cat, placement, rotatable) {
   const pointers = new Map();
   let dragStart = null;
@@ -373,7 +302,12 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
       pinchStart = null;
     } else if (pointers.size === 2) {
       const pts = [...pointers.values()];
-      pinchStart = { angle: angleOf(pts[0], pts[1]), r: placement.r || 0 };
+      pinchStart = {
+        dist: dist(pts[0], pts[1]),
+        angle: angleOf(pts[0], pts[1]),
+        w: placement.w, h: placement.h, r: placement.r || 0,
+        cx: placement.x + placement.w / 2, cy: placement.y + placement.h / 2
+      };
       dragStart = null;
     }
   };
@@ -389,11 +323,19 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
       placement.x = clamp(dragStart.left + dxPct, -5, 100 - placement.w + 5);
       placement.y = clamp(dragStart.top + dyPct, -5, 100 - placement.h + 5);
       applyRect();
-    } else if (pointers.size === 2 && pinchStart && rotatable) {
+    } else if (pointers.size === 2 && pinchStart) {
       const pts = [...pointers.values()];
-      const angle = angleOf(pts[0], pts[1]);
-      placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
-      wrap.style.transform = `rotate(${placement.r}deg)`;
+      const scale = dist(pts[0], pts[1]) / pinchStart.dist;
+      placement.w = clamp(pinchStart.w * scale, 15, MAX_ITEM_SIZE);
+      placement.h = clamp(pinchStart.h * scale, 8, MAX_ITEM_SIZE);
+      placement.x = pinchStart.cx - placement.w / 2;
+      placement.y = pinchStart.cy - placement.h / 2;
+      applyRect();
+      if (rotatable) {
+        const angle = angleOf(pts[0], pts[1]);
+        placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
+        wrap.style.transform = `rotate(${placement.r}deg)`;
+      }
     }
   };
 
@@ -449,22 +391,17 @@ function openPicker(cat) {
       grid.appendChild(buildItemCard(item, {
         noDelete: true,
         onClick: (it) => {
-          if (cat === "top") {
-            // Shirts are auto-aligned to the mannequin's shoulders rather
-            // than left at a manual position, so re-align fresh each time.
-            builder.placements[cat] = { itemId: it.id, ...autoTopPlacement(it, builder.gender) };
-          } else {
-            const existing = builder.placements[cat];
-            builder.placements[cat] = {
-              itemId: it.id,
-              x: existing ? existing.x : DEFAULT_PLACEMENT[cat].x,
-              y: existing ? existing.y : DEFAULT_PLACEMENT[cat].y,
-              w: existing ? existing.w : DEFAULT_PLACEMENT[cat].w,
-              h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
-              r: existing ? (existing.r || 0) : 0
-            };
-          }
+          const existing = builder.placements[cat];
+          builder.placements[cat] = {
+            itemId: it.id,
+            x: existing ? existing.x : DEFAULT_PLACEMENT[cat].x,
+            y: existing ? existing.y : DEFAULT_PLACEMENT[cat].y,
+            w: existing ? existing.w : DEFAULT_PLACEMENT[cat].w,
+            h: existing ? existing.h : DEFAULT_PLACEMENT[cat].h,
+            r: existing ? (existing.r || 0) : 0
+          };
           renderSlot(cat);
+          refreshBackdrop();
           closePicker();
         }
       }));
@@ -482,6 +419,7 @@ $("#picker-remove").addEventListener("click", () => {
   if (pickerTargetCat) {
     delete builder.placements[pickerTargetCat];
     renderSlot(pickerTargetCat);
+    refreshBackdrop();
   }
   closePicker();
 });
@@ -581,9 +519,10 @@ function shuffleOutfit() {
     const key = pick.t.id + ":" + pick.b.id;
     if (key !== lastShuffleKey || pool.length === 1) { lastShuffleKey = key; break; }
   }
-  builder.placements.top = { itemId: pick.t.id, ...autoTopPlacement(pick.t, builder.gender) };
+  builder.placements.top = { itemId: pick.t.id, ...DEFAULT_PLACEMENT.top };
   builder.placements.bottom = { itemId: pick.b.id, ...DEFAULT_PLACEMENT.bottom };
   renderAllSlots();
+  refreshBackdrop();
 }
 $("#shuffle-outfit").addEventListener("click", shuffleOutfit);
 
@@ -601,7 +540,7 @@ $("#name-save").addEventListener("click", async () => {
   const outfit = {
     id: builder.editingId || uid(),
     name: $("#outfit-name-input").value.trim() || "Untitled outfit",
-    gender: builder.gender,
+    backdrop: getBackdrop(),
     placements: JSON.parse(JSON.stringify(builder.placements)),
     createdAt: Date.now()
   };
@@ -643,10 +582,7 @@ function renderOutfitDeck() {
     card.className = "outfit-card" + (idx === deckIndex ? " current" : "");
     const stage = document.createElement("div");
     stage.className = "outfit-stage";
-    stage.innerHTML = `
-      <div class="mannequin-backdrop" style="background:${getBackdrop()}"></div>
-      ${outfit.gender !== "none" ? `<img class="mannequin-photo" src="${MANNEQUIN_PHOTO[outfit.gender]}" alt="">` : ""}
-    `;
+    stage.innerHTML = `<div class="mannequin-backdrop" style="background:${outfit.backdrop || getBackdrop()}"></div>`;
 
     Object.entries(outfit.placements).forEach(([cat, p]) => {
       const div = document.createElement("div");
@@ -714,12 +650,10 @@ $("#deck-delete").addEventListener("click", async () => {
 $("#deck-edit").addEventListener("click", () => {
   const outfit = outfitsCache[deckIndex];
   if (!outfit) return;
-  builder.gender = outfit.gender;
   builder.placements = JSON.parse(JSON.stringify(outfit.placements));
   builder.editingId = outfit.id;
-  $all(".gender-btn").forEach(b => b.classList.toggle("active", b.dataset.gender === outfit.gender));
-  renderMannequinBase();
   renderAllSlots();
+  refreshBackdrop();
   switchView("builder");
 });
 
@@ -750,14 +684,26 @@ function initTheme() {
 }
 
 // ---------- Backdrop ----------
+// "Auto" (the default) matches the backdrop to the current top/bottom
+// item's own original photo background, so the cutout blends in. Picking
+// an explicit color overrides that until "Auto" is chosen again.
+function getAutoBackdropColor() {
+  const topItem = builder.placements.top && itemsCache.find(i => i.id === builder.placements.top.itemId);
+  const bottomItem = builder.placements.bottom && itemsCache.find(i => i.id === builder.placements.bottom.itemId);
+  return (topItem && topItem.bgColor) || (bottomItem && bottomItem.bgColor) || "#ffffff";
+}
 function getBackdrop() {
   let stored = null;
   try { stored = localStorage.getItem("wardrobe-backdrop"); } catch (e) { /* ignore */ }
-  return stored || BACKDROPS[0].value;
+  const value = stored || "auto";
+  return value === "auto" ? getAutoBackdropColor() : value;
+}
+function refreshBackdrop() {
+  $("#mannequin-backdrop").style.background = getBackdrop();
 }
 function setBackdrop(value) {
   try { localStorage.setItem("wardrobe-backdrop", value); } catch (e) { /* ignore */ }
-  $("#mannequin-backdrop").style.background = value;
+  refreshBackdrop();
   if (currentView() === "outfits") renderOutfitDeck();
 }
 function currentView() {
@@ -768,11 +714,13 @@ function currentView() {
 function openBackdropPicker() {
   const grid = $("#backdrop-swatch-grid");
   grid.innerHTML = "";
-  const current = getBackdrop();
+  let stored = null;
+  try { stored = localStorage.getItem("wardrobe-backdrop"); } catch (e) { /* ignore */ }
+  const current = stored || "auto";
   BACKDROPS.forEach(bd => {
     const btn = document.createElement("button");
     btn.className = "backdrop-swatch" + (bd.value === current ? " selected" : "");
-    btn.style.background = bd.value;
+    btn.style.background = bd.value === "auto" ? getAutoBackdropColor() : bd.value;
     btn.innerHTML = `<span>${bd.name}</span>`;
     btn.addEventListener("click", () => {
       setBackdrop(bd.value);
@@ -788,6 +736,35 @@ function closeBackdropPicker() {
 $("#backdrop-toggle").addEventListener("click", openBackdropPicker);
 $("#backdrop-cancel").addEventListener("click", closeBackdropPicker);
 
+// ---------- Service worker / update banner ----------
+function initServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    reg.addEventListener("updatefound", () => {
+      const installing = reg.installing;
+      if (!installing) return;
+      installing.addEventListener("statechange", () => {
+        if (installing.state === "installed" && navigator.serviceWorker.controller) {
+          $("#update-banner").hidden = false;
+        }
+      });
+    });
+  }).catch(() => {});
+
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
+
+  $("#update-reload-btn").addEventListener("click", async () => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+  });
+}
+
 // ---------- Init ----------
 async function handleResetParam() {
   if (new URLSearchParams(location.search).get("reset") !== "1") return;
@@ -800,13 +777,11 @@ async function handleResetParam() {
 
 async function init() {
   initTheme();
-  renderMannequinBase();
   renderAllSlots();
   await handleResetParam();
   await loadItems();
+  refreshBackdrop();
   await loadOutfits();
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
+  initServiceWorker();
 }
 init();
