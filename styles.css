@@ -340,29 +340,12 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
-.sources-icon-base { font-size: 20px; }
-.sources-icon-badge {
-  position: absolute;
-  top: 38%;
-  left: 30%;
-  transform: translate(-50%, -50%);
-  font-size: 6.5px;
-  letter-spacing: -2.5px;
-  z-index: 2;
-}
-/* Explicitly clipped (rather than relying on z-index against the base
-   emoji's own transparency, which rendered unpredictably) so the dress
-   reliably looks like it's tucked partly under the front book instead of
-   floating separately on top. */
-.sources-icon-badge-lower {
-  position: absolute;
-  top: 40%;
-  left: 60%;
-  transform: translate(-50%, -50%);
-  font-size: 6.5px;
-  z-index: 1;
-  clip-path: inset(0 0 0 40%);
+.sources-icon-img {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
 }
 .change-buttons-row {
   display: flex;
