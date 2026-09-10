@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 18;
+const APP_VERSION = 19;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -566,6 +566,11 @@ async function loadOutfits() {
   if (deckIndex >= outfitsCache.length) deckIndex = Math.max(0, outfitsCache.length - 1);
 }
 
+const HANGER_SVG = `<svg viewBox="0 0 60 22" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M30 2 C30 7 24 7 24 12 L36 12 C36 7 30 7 30 2" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="4" y1="12" x2="56" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+</svg>`;
+
 function renderOutfitDeck() {
   const deck = $("#outfit-deck");
   const empty = $("#outfits-empty");
@@ -581,13 +586,16 @@ function renderOutfitDeck() {
     return;
   }
   empty.style.display = "none";
-  deck.style.display = "block";
+  deck.style.display = "flex";
   controls.style.display = "flex";
   actions.style.display = "flex";
 
   outfitsCache.forEach((outfit, idx) => {
     const card = document.createElement("div");
-    card.className = "outfit-card" + (idx === deckIndex ? " current" : "");
+    card.className = "outfit-card";
+    const hook = document.createElement("div");
+    hook.className = "hanger-hook";
+    hook.innerHTML = HANGER_SVG;
     const stage = document.createElement("div");
     stage.className = "outfit-stage";
     stage.innerHTML = `<div class="mannequin-backdrop" style="background:${outfit.backdrop || getBackdrop()}"></div>`;
@@ -620,6 +628,7 @@ function renderOutfitDeck() {
     stageSlot.className = "stage-slot";
     stageSlot.appendChild(stage);
 
+    card.appendChild(hook);
     card.appendChild(stageSlot);
     card.appendChild(title);
     deck.appendChild(card);
@@ -628,26 +637,43 @@ function renderOutfitDeck() {
   });
 
   $("#deck-position").textContent = `${deckIndex + 1} / ${outfitsCache.length}`;
-  setupDeckSwipe();
+  scrollToCard(deckIndex, false);
+  setupDeckScrollTracking();
 }
 
-function setupDeckSwipe() {
+// The rail is a native horizontally-scrolling, scroll-snapping strip (one
+// hanger per outfit) - swiping is the primary way through it. This just
+// keeps deckIndex (used by the position label and Edit/Delete) in sync
+// with whichever hanger the user has scrolled to.
+function setupDeckScrollTracking() {
   const deck = $("#outfit-deck");
-  let startX = null;
-  deck.onpointerdown = (e) => { startX = e.clientX; };
-  deck.onpointerup = (e) => {
-    if (startX === null) return;
-    const dx = e.clientX - startX;
-    startX = null;
-    if (dx > 60) deckMove(-1);
-    else if (dx < -60) deckMove(1);
+  deck.onscroll = () => {
+    const cards = $all("#outfit-deck .outfit-card");
+    if (!cards.length) return;
+    const center = deck.scrollLeft + deck.clientWidth / 2;
+    let closestIdx = 0, closestDist = Infinity;
+    cards.forEach((card, idx) => {
+      const dist = Math.abs(card.offsetLeft + card.offsetWidth / 2 - center);
+      if (dist < closestDist) { closestDist = dist; closestIdx = idx; }
+    });
+    if (closestIdx !== deckIndex) {
+      deckIndex = closestIdx;
+      $("#deck-position").textContent = `${deckIndex + 1} / ${outfitsCache.length}`;
+    }
   };
+}
+
+function scrollToCard(idx, smooth) {
+  const card = $all("#outfit-deck .outfit-card")[idx];
+  if (!card) return;
+  card.scrollIntoView({ behavior: smooth === false ? "auto" : "smooth", inline: "center", block: "nearest" });
 }
 
 function deckMove(delta) {
   if (outfitsCache.length === 0) return;
   deckIndex = clamp(deckIndex + delta, 0, outfitsCache.length - 1);
-  renderOutfitDeck();
+  $("#deck-position").textContent = `${deckIndex + 1} / ${outfitsCache.length}`;
+  scrollToCard(deckIndex, true);
 }
 $("#deck-prev").addEventListener("click", () => deckMove(-1));
 $("#deck-next").addEventListener("click", () => deckMove(1));
@@ -802,7 +828,26 @@ async function handleResetParam() {
   history.replaceState(null, "", location.pathname);
 }
 
+// Plays once per browser session (a full close-and-reopen gets the
+// animation again; flipping back and forth between apps within the same
+// session does not) so it stays a nice touch instead of getting old fast.
+function playClosetIntro() {
+  const intro = document.getElementById("closet-intro");
+  if (!intro) return;
+  let alreadyPlayed = false;
+  try { alreadyPlayed = sessionStorage.getItem("wardrobe-intro-played") === "1"; } catch (e) { /* ignore */ }
+  if (alreadyPlayed) { intro.remove(); return; }
+  try { sessionStorage.setItem("wardrobe-intro-played", "1"); } catch (e) { /* ignore */ }
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => intro.classList.add("opening"));
+  });
+  const cleanup = () => intro.remove();
+  intro.addEventListener("transitionend", cleanup, { once: true });
+  setTimeout(cleanup, 1000); // fallback in case transitionend doesn't fire
+}
+
 async function init() {
+  playClosetIntro();
   initTheme();
   renderAllSlots();
   stageResizeObserver.observe($("#mannequin-stage").parentElement);

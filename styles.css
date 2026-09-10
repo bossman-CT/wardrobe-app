@@ -69,6 +69,51 @@ html, body {
   background: var(--bg);
 }
 
+/* Closet-door open animation played once per session on launch. */
+.closet-intro {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  display: flex;
+  z-index: 999;
+  pointer-events: none;
+  overflow: hidden;
+}
+.closet-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: linear-gradient(135deg, #8a5a3b, #5c3a22);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.35);
+  transition: transform 0.85s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.closet-door::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e9d8ae;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+.closet-door-left { left: 0; }
+.closet-door-left::after { right: 16px; }
+.closet-door-right { right: 0; }
+.closet-door-right::after { left: 16px; }
+.closet-intro.opening .closet-door-left {
+  transform: translateX(-100%) rotate(-6deg);
+}
+.closet-intro.opening .closet-door-right {
+  transform: translateX(100%) rotate(6deg);
+}
+
 .update-banner[hidden] {
   display: none;
 }
@@ -342,25 +387,39 @@ html, body {
   margin: 10px 4px;
 }
 
-/* Outfits / swipe deck */
+/* Outfits / hanger rail - a horizontally swipeable, scroll-snapping strip,
+   one hanger per saved outfit. */
 .outfit-deck {
-  position: relative;
   width: 100%;
   flex: 1;
   min-height: 120px;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  gap: 16px;
+  padding: 0 12%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.outfit-deck::-webkit-scrollbar { display: none; }
 .outfit-card {
-  position: absolute;
-  inset: 0;
+  flex: 0 0 76%;
+  scroll-snap-align: center;
   background: var(--photo-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  display: none;
+  display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.outfit-card.current { display: flex; }
 .outfit-card .placed-item { cursor: default; }
+.hanger-hook {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  padding: 6px 10px 0;
+}
+.hanger-hook svg { width: 100%; height: 20px; display: block; }
 .outfit-card .outfit-title {
   padding: 10px 14px;
   font-weight: 700;
