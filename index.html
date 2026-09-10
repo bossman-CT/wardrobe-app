@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#7c5cff" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=3" />
+<link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
 <div id="app">
@@ -49,13 +49,15 @@
         </div>
       </div>
 
-      <div class="mannequin-stage" id="mannequin-stage">
-        <div id="mannequin-backdrop" class="mannequin-backdrop"></div>
-        <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
-        <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
+      <div class="stage-slot">
+        <div class="mannequin-stage" id="mannequin-stage">
+          <div id="mannequin-backdrop" class="mannequin-backdrop"></div>
+          <div class="slot-layer" id="slot-top" data-cat="top"><span class="slot-label">Tap to add top</span></div>
+          <div class="slot-layer" id="slot-bottom" data-cat="bottom"><span class="slot-label">Tap to add bottom</span></div>
+        </div>
       </div>
 
-      <p class="hint">Use Change Top/Bottom to pick items, drag to reposition. Pinch with two fingers to resize, twist to rotate the bottom.</p>
+      <p class="hint">Use Change Top/Bottom to pick items, drag to reposition. Pinch with two fingers to resize and rotate.</p>
 
       <button id="shuffle-outfit" class="ghost-btn shuffle-btn">🎲 Random Outfit</button>
       <button id="save-outfit" class="primary-btn">Save Outfit</button>
@@ -184,8 +186,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=3"></script>
-<script src="db.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="bg-remove.js?v=4"></script>
+<script src="db.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

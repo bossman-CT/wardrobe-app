@@ -267,10 +267,23 @@ html, body {
   white-space: nowrap;
 }
 
-.mannequin-stage {
-  position: relative;
+/* Wraps the fixed-proportion stage box and centers it within whatever
+   vertical space is left over - this is what lets the Builder and
+   Outfits views fit any screen height with no scrollbar, while the
+   stage box itself always keeps the same shape so item placements
+   (stored as percentages of the stage) look identical in both views
+   regardless of how much other UI surrounds each one. */
+.stage-slot {
   flex: 1;
-  min-height: 120px;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mannequin-stage, .outfit-stage {
+  position: relative;
   background: var(--photo-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -321,24 +334,6 @@ html, body {
   pointer-events: none;
   filter: drop-shadow(0 4px 7px rgba(20,15,10,0.3));
 }
-.rotate-handle {
-  position: absolute;
-  right: -14px;
-  top: -14px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #fff;
-  border: 3px solid var(--accent);
-  color: var(--accent);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  font-size: 15px;
-  line-height: 24px;
-  text-align: center;
-  touch-action: none;
-  cursor: grab;
-  z-index: 2;
-}
 
 .hint {
   font-size: 12px;
@@ -365,10 +360,6 @@ html, body {
   overflow: hidden;
 }
 .outfit-card.current { display: flex; }
-.outfit-card .outfit-stage {
-  position: relative;
-  flex: 1;
-}
 .outfit-card .placed-item { cursor: default; }
 .outfit-card .outfit-title {
   padding: 10px 14px;

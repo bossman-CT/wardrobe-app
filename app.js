@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 17;
+const APP_VERSION = 18;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -90,6 +90,7 @@ function switchView(view) {
   $(`.tab-btn[data-view="${view}"]`).classList.add("active");
   $("#fab-add").style.display = view === "closet" ? "block" : "none";
   if (view === "outfits") renderOutfitDeck();
+  if (view === "builder") fitStageBox($("#mannequin-stage").parentElement);
 }
 
 // ---------- Closet ----------
@@ -248,11 +249,10 @@ function renderSlot(cat) {
   slot.style.height = placement.h + "%";
   slot.style.zIndex = LAYER_ORDER[cat] || 0;
 
-  const rotatable = cat !== "top";
   const wrap = document.createElement("div");
   wrap.className = "placed-item";
   wrap.dataset.cat = cat;
-  wrap.style.transform = rotatable ? `rotate(${placement.r || 0}deg)` : "";
+  wrap.style.transform = `rotate(${placement.r || 0}deg)`;
 
   let content;
   if (cat === "shoes") {
@@ -261,14 +261,10 @@ function renderSlot(cat) {
     const item = itemsCache.find(i => i.id === placement.itemId);
     content = `<img src="${item ? item.image : ""}" alt="">`;
   }
-  wrap.innerHTML = `
-    ${content}
-    ${rotatable ? '<div class="rotate-handle">⟳</div>' : ""}
-  `;
+  wrap.innerHTML = content;
   slot.appendChild(wrap);
 
-  makeDraggable(slot, wrap, cat, placement, rotatable);
-  if (rotatable) makeRotatable(wrap.querySelector(".rotate-handle"), wrap, placement);
+  makeDraggable(slot, wrap, cat, placement);
 }
 
 $("#change-top-btn").addEventListener("click", () => openPicker("top"));
@@ -284,12 +280,41 @@ function resetSlotDefaultRect(slot, cat) {
 
 const MAX_ITEM_SIZE = 85;
 
+// Every stage (the Builder's and each saved outfit's) is sized to this
+// same width:height ratio so that identical placement percentages always
+// look the same everywhere, regardless of how much other UI surrounds
+// the stage in a given view. CSS aspect-ratio can't cleanly "contain" a
+// box when both max-width and max-height might need to clamp it, so this
+// is done in JS instead: whichever dimension of the available space is
+// the tighter fit wins, and the stage is sized down to match it exactly.
+const STAGE_RATIO = 6 / 7; // width / height
+
+function fitStageBox(slotEl) {
+  const box = slotEl.firstElementChild;
+  if (!box) return;
+  const availW = slotEl.clientWidth;
+  const availH = slotEl.clientHeight;
+  if (!availW || !availH) return;
+  let w = availW, h = w / STAGE_RATIO;
+  if (h > availH) { h = availH; w = h * STAGE_RATIO; }
+  box.style.width = Math.round(w) + "px";
+  box.style.height = Math.round(h) + "px";
+}
+
+const stageResizeObserver = new ResizeObserver((entries) => {
+  for (const entry of entries) fitStageBox(entry.target);
+});
+
+window.addEventListener("resize", () => {
+  $all(".stage-slot").forEach(fitStageBox);
+});
+
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function angleOf(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
 
 // Single finger drags the item; a second finger pinches to resize (anchored
-// on the item's own center) and, on a rotatable item, twists to rotate too.
-function makeDraggable(slot, wrap, cat, placement, rotatable) {
+// on the item's own center) and twists to rotate at the same time.
+function makeDraggable(slot, wrap, cat, placement) {
   const pointers = new Map();
   let dragStart = null;
   let pinchStart = null;
@@ -302,7 +327,6 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
   }
 
   slot.onpointerdown = (e) => {
-    if (e.target.closest(".rotate-handle")) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { slot.setPointerCapture(e.pointerId); } catch (err) { /* ignore - not all browsers allow capturing every simultaneous touch */ }
     if (pointers.size === 1) {
@@ -339,11 +363,9 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
       placement.x = pinchStart.cx - placement.w / 2;
       placement.y = pinchStart.cy - placement.h / 2;
       applyRect();
-      if (rotatable) {
-        const angle = angleOf(pts[0], pts[1]);
-        placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
-        wrap.style.transform = `rotate(${placement.r}deg)`;
-      }
+      const angle = angleOf(pts[0], pts[1]);
+      placement.r = Math.round(pinchStart.r + (angle - pinchStart.angle) * 180 / Math.PI);
+      wrap.style.transform = `rotate(${placement.r}deg)`;
     }
   };
 
@@ -360,29 +382,6 @@ function makeDraggable(slot, wrap, cat, placement, rotatable) {
   }
   slot.onpointerup = release;
   slot.onpointercancel = release;
-}
-
-function makeRotatable(handle, wrap, placement) {
-  let rotating = false, centerX, centerY, startAngle, startR;
-  handle.onpointerdown = (e) => {
-    e.stopPropagation();
-    rotating = true;
-    handle.setPointerCapture(e.pointerId);
-    const rect = wrap.getBoundingClientRect();
-    centerX = rect.left + rect.width / 2;
-    centerY = rect.top + rect.height / 2;
-    startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    startR = placement.r || 0;
-  };
-  handle.onpointermove = (e) => {
-    if (!rotating) return;
-    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    const deltaDeg = (angle - startAngle) * 180 / Math.PI;
-    placement.r = Math.round(startR + deltaDeg);
-    wrap.style.transform = `rotate(${placement.r}deg)`;
-  };
-  handle.onpointerup = (e) => { e.stopPropagation(); rotating = false; };
-  handle.onpointercancel = () => { rotating = false; };
 }
 
 // ---------- Picker modal ----------
@@ -603,7 +602,7 @@ function renderOutfitDeck() {
       div.style.width = p.w + "%";
       div.style.height = p.h + "%";
       div.style.zIndex = LAYER_ORDER[cat] || 0;
-      div.style.transform = cat === "top" ? "" : `rotate(${p.r || 0}deg)`;
+      div.style.transform = `rotate(${p.r || 0}deg)`;
       if (cat === "shoes") {
         div.innerHTML = `<div class="shoe-shape">${shoeShapeSVG(p.color)}</div>`;
       } else {
@@ -617,9 +616,15 @@ function renderOutfitDeck() {
     title.className = "outfit-title";
     title.textContent = outfit.name;
 
-    card.appendChild(stage);
+    const stageSlot = document.createElement("div");
+    stageSlot.className = "stage-slot";
+    stageSlot.appendChild(stage);
+
+    card.appendChild(stageSlot);
     card.appendChild(title);
     deck.appendChild(card);
+    stageResizeObserver.observe(stageSlot);
+    fitStageBox(stageSlot);
   });
 
   $("#deck-position").textContent = `${deckIndex + 1} / ${outfitsCache.length}`;
@@ -800,6 +805,7 @@ async function handleResetParam() {
 async function init() {
   initTheme();
   renderAllSlots();
+  stageResizeObserver.observe($("#mannequin-stage").parentElement);
   await handleResetParam();
   await loadItems();
   refreshBackdrop();
