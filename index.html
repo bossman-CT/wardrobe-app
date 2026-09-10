@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#7c5cff" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=6" />
+<link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -72,7 +72,10 @@
       <div id="outfits-empty" class="empty-state">
         <p>No saved outfits yet. Build one in the Builder tab.</p>
       </div>
-      <div id="outfit-deck" class="outfit-deck"></div>
+      <div class="hanger-rail-wrap">
+        <div class="hanger-rod"></div>
+        <div id="outfit-deck" class="outfit-deck"></div>
+      </div>
       <div class="deck-controls">
         <button id="deck-prev" class="ghost-btn">&larr; Prev</button>
         <span id="deck-position"></span>
@@ -190,8 +193,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=6"></script>
-<script src="db.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="bg-remove.js?v=7"></script>
+<script src="db.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

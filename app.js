@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 20;
+const APP_VERSION = 21;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -305,8 +305,10 @@ const stageResizeObserver = new ResizeObserver((entries) => {
   for (const entry of entries) fitStageBox(entry.target);
 });
 
+// Only the Builder's stage uses fixed-ratio JS sizing; outfit cards
+// stretch-fill via plain CSS, so they're deliberately left out here.
 window.addEventListener("resize", () => {
-  $all(".stage-slot").forEach(fitStageBox);
+  fitStageBox($("#mannequin-stage").parentElement);
 });
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -566,10 +568,25 @@ async function loadOutfits() {
   if (deckIndex >= outfitsCache.length) deckIndex = Math.max(0, outfitsCache.length - 1);
 }
 
-const HANGER_SVG = `<svg viewBox="0 0 60 22" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M30 2 C30 7 24 7 24 12 L36 12 C36 7 30 7 30 2" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="4" y1="12" x2="56" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-</svg>`;
+// Each hanger hook rises into the deck's own top padding, which is where
+// the stationary .hanger-rod (a sibling outside the scroller) sits - so
+// as a card scrolls horizontally, its hook visually slides along the rod
+// like a real hanger, while the rod itself never moves.
+let hangerGradId = 0;
+function hangerHookSVG() {
+  const id = "hanger-grad-" + (hangerGradId++);
+  return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f5f6f8"/>
+        <stop offset="55%" stop-color="#aab0ba"/>
+        <stop offset="100%" stop-color="#767c86"/>
+      </linearGradient>
+    </defs>
+    <path d="M50 13 C50 19 44 19 44 24 L56 24 C56 19 50 19 50 13" fill="none" stroke="url(#${id})" stroke-width="4" stroke-linecap="round"/>
+    <path d="M6 30 L45 22 L55 22 L94 30" fill="none" stroke="url(#${id})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
 
 function renderOutfitDeck() {
   const deck = $("#outfit-deck");
@@ -580,12 +597,13 @@ function renderOutfitDeck() {
 
   if (outfitsCache.length === 0) {
     empty.style.display = "block";
-    deck.style.display = "none";
+    $(".hanger-rail-wrap").style.display = "none";
     controls.style.display = "none";
     actions.style.display = "none";
     return;
   }
   empty.style.display = "none";
+  $(".hanger-rail-wrap").style.display = "flex";
   deck.style.display = "flex";
   controls.style.display = "flex";
   actions.style.display = "flex";
@@ -595,7 +613,7 @@ function renderOutfitDeck() {
     card.className = "outfit-card";
     const hook = document.createElement("div");
     hook.className = "hanger-hook";
-    hook.innerHTML = HANGER_SVG;
+    hook.innerHTML = hangerHookSVG();
     const stage = document.createElement("div");
     stage.className = "outfit-stage";
     stage.innerHTML = `<div class="mannequin-backdrop" style="background:${outfit.backdrop || getBackdrop()}"></div>`;
@@ -632,8 +650,6 @@ function renderOutfitDeck() {
     card.appendChild(stageSlot);
     card.appendChild(title);
     deck.appendChild(card);
-    stageResizeObserver.observe(stageSlot);
-    fitStageBox(stageSlot);
   });
 
   $("#deck-position").textContent = `${deckIndex + 1} / ${outfitsCache.length}`;
