@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 38;
+const APP_VERSION = 39;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -78,7 +78,7 @@ function openPhotoView(item) {
   $("#photo-view-img").src = item.image;
   $("#photo-view-name").textContent = item.name || "";
   $("#photo-view-category").value = item.category;
-  $("#photo-view-formality").value = item.formality || "everyday";
+  $("#photo-view-formality").value = itemFormality(item);
   $("#photo-view-modal").classList.add("open");
 }
 $("#photo-view-formality").addEventListener("change", async (e) => {
@@ -280,13 +280,21 @@ async function loadItems() {
   renderCloset();
 }
 
+let closetFormalityFilter = "all";
+
 function renderCloset() {
   CATEGORIES.forEach(cat => {
     const grid = $(`#grid-${cat}`);
     grid.innerHTML = "";
-    const items = itemsCache.filter(i => i.category === cat);
+    let items = itemsCache.filter(i => i.category === cat);
+    if (closetFormalityFilter !== "all") {
+      items = items.filter(i => itemFormality(i) === closetFormalityFilter);
+    }
     if (items.length === 0) {
-      grid.innerHTML = `<div class="empty-grid-hint">No items yet</div>`;
+      const msg = closetFormalityFilter === "all"
+        ? "No items yet"
+        : `No ${closetFormalityFilter} items`;
+      grid.innerHTML = `<div class="empty-grid-hint">${msg}</div>`;
       return;
     }
     items.forEach(item => grid.appendChild(buildItemCard(item, {
@@ -294,6 +302,25 @@ function renderCloset() {
     })));
   });
 }
+
+// Shared by the Clothes filter and the Suggest Outfit dressiness filter -
+// both are a row of exclusive chips that call back with the selected value.
+function initFilterBar(id, onChange) {
+  $all(`#${id} .filter-chip`).forEach(btn => {
+    btn.addEventListener("click", () => {
+      $all(`#${id} .filter-chip`).forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      onChange(btn.dataset.formality);
+    });
+  });
+}
+initFilterBar("closet-formality-filter", (value) => {
+  closetFormalityFilter = value;
+  renderCloset();
+});
+initFilterBar("suggest-formality-filter", (value) => {
+  suggestFormalityTarget = value;
+});
 
 function buildItemCard(item, opts = {}) {
   const card = document.createElement("div");
@@ -783,6 +810,11 @@ function outfitColorScore(colorA, colorB) {
 // instead of a choice. Items saved before this existed have no formality
 // set, which scores as 0 rather than penalising them.
 const FORMALITY_RANK = { casual: 1, everyday: 2, dressy: 3 };
+// For display and filtering (as opposed to outfitFormalityScore's pairwise
+// compatibility check, which deliberately treats missing data as neutral
+// rather than guessing) an item with no formality set reads as "everyday" -
+// the same default new items get in the Add Clothing form.
+function itemFormality(item) { return item.formality || "everyday"; }
 function outfitFormalityScore(a, b) {
   const rankA = FORMALITY_RANK[a], rankB = FORMALITY_RANK[b];
   if (!rankA || !rankB) return 0;
@@ -814,11 +846,23 @@ function outfitScore(top, bottom) {
 // pair earns, and competes with them on equal footing.
 const ONE_PIECE_SCORE = 4;
 
+// "Any" target aside, a requested dressiness also admits items one rung
+// away (dressy allows everyday, not casual) - the same one-rung tolerance
+// the pairwise formality score itself uses - so a closet without an exact
+// match still gets a reasonable answer instead of an empty one. Among
+// admitted items, outfitFormalityScore's own gap penalty still favors an
+// exact match over a one-rung neighbor.
+let suggestFormalityTarget = "any";
+function matchesFormalityTarget(item) {
+  if (suggestFormalityTarget === "any") return true;
+  return Math.abs(FORMALITY_RANK[itemFormality(item)] - FORMALITY_RANK[suggestFormalityTarget]) <= 1;
+}
+
 let lastSuggestKey = null;
 function suggestOutfit() {
-  const tops = itemsCache.filter(i => i.category === "top");
-  const bottoms = itemsCache.filter(i => i.category === "bottom");
-  const onePieces = itemsCache.filter(i => i.category === ONE_PIECE);
+  const tops = itemsCache.filter(i => i.category === "top" && matchesFormalityTarget(i));
+  const bottoms = itemsCache.filter(i => i.category === "bottom" && matchesFormalityTarget(i));
+  const onePieces = itemsCache.filter(i => i.category === ONE_PIECE && matchesFormalityTarget(i));
 
   const options = [];
   for (const t of tops) {
@@ -829,7 +873,9 @@ function suggestOutfit() {
   for (const o of onePieces) options.push({ onePiece: o, score: ONE_PIECE_SCORE });
 
   if (!options.length) {
-    alert("Add a dress, or at least one top and one bottom, to your closet first.");
+    alert(suggestFormalityTarget === "any"
+      ? "Add a dress, or at least one top and one bottom, to your closet first."
+      : `No ${suggestFormalityTarget} items (or close to it) in your closet yet.`);
     return;
   }
   const bestScore = Math.max(...options.map(p => p.score));
