@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 40;
+const APP_VERSION = 41;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -127,6 +127,11 @@ $("#photo-view-formality").addEventListener("change", async (e) => {
   if (!photoViewItem) return;
   photoViewItem.formality = e.target.value;
   await DB.addItem(photoViewItem);
+  // Without this the Clothes grid behind the modal keeps showing the old
+  // dressiness until some unrelated action (switching profiles, adding an
+  // item) happens to re-render it - a dressiness filter would then still
+  // list an item that no longer matches.
+  await loadItems();
 });
 $("#photo-view-category").addEventListener("change", async (e) => {
   if (!photoViewItem) return;
