@@ -216,13 +216,49 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
-  margin: 0 0 8px 2px;
+  margin: 0;
 }
+.section-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 8px 2px;
+  cursor: pointer;
+}
+.section-chevron {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding-right: 4px;
+  transition: transform 0.15s;
+}
+.section-block.collapsed .section-chevron { transform: rotate(-90deg); }
 
 .item-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+/* Collapsed sections drop to a single horizontally-swipeable row instead of
+   the full grid, so a big closet doesn't push everything else off screen. */
+.section-block.collapsed .item-grid {
+  display: flex;
+  overflow-x: auto;
+  gap: 10px;
+  padding-bottom: 2px;
+  scroll-snap-type: x proximity;
+}
+.section-block.collapsed .item-grid .item-card {
+  flex: 0 0 84px;
+  width: 84px;
+  scroll-snap-align: start;
+}
+.section-block.collapsed .item-grid .empty-grid-hint {
+  flex: 1;
+  white-space: nowrap;
 }
 
 .item-card {

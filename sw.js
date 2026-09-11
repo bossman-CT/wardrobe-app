@@ -1,14 +1,14 @@
-const CACHE = "wardrobe-v36";
+const CACHE = "wardrobe-v38";
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=22",
-  "app.js?v=22",
-  "db.js?v=22",
-  "bg-remove.js?v=22",
-  "manifest.json?v=22",
+  "styles.css?v=24",
+  "app.js?v=24",
+  "db.js?v=24",
+  "bg-remove.js?v=24",
+  "manifest.json?v=24",
   "assets/icon.svg",
-  "assets/sources-icon.png?v=22"
+  "assets/sources-icon.png?v=24"
 ];
 
 self.addEventListener("install", (event) => {

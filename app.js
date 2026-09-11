@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 36;
+const APP_VERSION = 38;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -77,6 +77,7 @@ function openPhotoView(item) {
   photoViewItem = item;
   $("#photo-view-img").src = item.image;
   $("#photo-view-name").textContent = item.name || "";
+  $("#photo-view-category").value = item.category;
   $("#photo-view-formality").value = item.formality || "everyday";
   $("#photo-view-modal").classList.add("open");
 }
@@ -84,6 +85,23 @@ $("#photo-view-formality").addEventListener("change", async (e) => {
   if (!photoViewItem) return;
   photoViewItem.formality = e.target.value;
   await DB.addItem(photoViewItem);
+});
+$("#photo-view-category").addEventListener("change", async (e) => {
+  if (!photoViewItem) return;
+  const oldCat = photoViewItem.category;
+  const newCat = e.target.value;
+  if (newCat === oldCat) return;
+  photoViewItem.category = newCat;
+  await DB.addItem(photoViewItem);
+  // A recategorized item may have been the one currently on the stage under
+  // its old slot - that placement no longer makes sense, so drop it rather
+  // than leave a stale reference sitting in the wrong slot.
+  if (builder.placements[oldCat] && builder.placements[oldCat].itemId === photoViewItem.id) {
+    delete builder.placements[oldCat];
+    renderAllSlots();
+    refreshBackdrop();
+  }
+  await loadItems();
 });
 $("#photo-view-close").addEventListener("click", () => $("#photo-view-modal").classList.remove("open"));
 $("#photo-view-modal").addEventListener("click", (e) => {
@@ -239,6 +257,24 @@ $("#profile-add").addEventListener("click", async () => {
 });
 
 // ---------- Closet ----------
+// Each section remembers its own collapsed state across reloads - a
+// per-device display preference, not outfit data, so it lives in
+// localStorage rather than the profile-scoped DB.
+function initClosetSections() {
+  $all(".section-block[data-cat]").forEach(section => {
+    const cat = section.dataset.cat;
+    const key = `wardrobe-collapsed-${cat}`;
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(key) === "1"; } catch (e) { /* ignore */ }
+    section.classList.toggle("collapsed", collapsed);
+    section.querySelector(".section-toggle-header").addEventListener("click", () => {
+      const nowCollapsed = section.classList.toggle("collapsed");
+      try { localStorage.setItem(key, nowCollapsed ? "1" : "0"); } catch (e) { /* ignore */ }
+    });
+  });
+}
+initClosetSections();
+
 async function loadItems() {
   itemsCache = (await DB.getAllItems()).filter(i => i.profileId === activeProfileId);
   renderCloset();

@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Closet Companion</title>
 <meta name="theme-color" content="#7c5cff" />
-<link rel="manifest" href="manifest.json?v=22" />
+<link rel="manifest" href="manifest.json?v=24" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=22" />
+<link rel="stylesheet" href="styles.css?v=24" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -28,7 +28,7 @@
         👤 <span id="profile-name-label">Me</span>
       </button>
       <button id="sources-toggle" class="icon-btn sources-btn" title="How Suggest Outfit works">
-        <img class="sources-icon-img" src="assets/sources-icon.png?v=22" alt="" />
+        <img class="sources-icon-img" src="assets/sources-icon.png?v=24" alt="" />
       </button>
       <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
     </div>
@@ -39,15 +39,24 @@
     <!-- CLOSET VIEW -->
     <section id="view-closet" class="view active">
       <div class="section-block" data-cat="top">
-        <h2>Tops</h2>
+        <button class="section-toggle-header" type="button">
+          <h2>Tops</h2>
+          <span class="section-chevron">⌄</span>
+        </button>
         <div class="item-grid" id="grid-top"></div>
       </div>
       <div class="section-block" data-cat="bottom">
-        <h2>Bottoms</h2>
+        <button class="section-toggle-header" type="button">
+          <h2>Bottoms</h2>
+          <span class="section-chevron">⌄</span>
+        </button>
         <div class="item-grid" id="grid-bottom"></div>
       </div>
       <div class="section-block" data-cat="onepiece">
-        <h2>One-pieces</h2>
+        <button class="section-toggle-header" type="button">
+          <h2>One-pieces</h2>
+          <span class="section-chevron">⌄</span>
+        </button>
         <div class="item-grid" id="grid-onepiece"></div>
       </div>
     </section>
@@ -201,6 +210,14 @@
     <img id="photo-view-img" alt="">
     <p id="photo-view-name" class="photo-view-name"></p>
     <label class="photo-view-field">
+      Category
+      <select id="photo-view-category">
+        <option value="top">Top</option>
+        <option value="bottom">Bottom</option>
+        <option value="onepiece">One-piece</option>
+      </select>
+    </label>
+    <label class="photo-view-field">
       How dressy is it?
       <select id="photo-view-formality">
         <option value="casual">Casual</option>
@@ -265,8 +282,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=22"></script>
-<script src="db.js?v=22"></script>
-<script src="app.js?v=22"></script>
+<script src="bg-remove.js?v=24"></script>
+<script src="db.js?v=24"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>
