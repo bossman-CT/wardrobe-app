@@ -4,7 +4,7 @@
 // has too many edge cases (accumulated waiting workers, a controller
 // reference an already-open tab won't drop) that left the update banner
 // stuck permanently visible for some users.
-const APP_VERSION = 39;
+const APP_VERSION = 40;
 
 const DEFAULT_PLACEMENT = {
   top: { x: 26, y: 15, w: 48, h: 29, r: 0 },
@@ -73,14 +73,56 @@ let pickerTargetCat = null;
 let deckIndex = 0;
 
 let photoViewItem = null;
+let photoViewList = [];
+let photoViewIndex = -1;
+
+// Opens on the section (and current dressiness filter) the tapped item
+// belongs to, captured once as a fixed list - swiping steps through that
+// snapshot rather than re-querying live, so editing an item's category or
+// dressiness mid-browse can't yank it out of the list you're in the middle
+// of paging through.
 function openPhotoView(item) {
+  photoViewList = getClosetSectionItems(item.category);
+  photoViewIndex = photoViewList.findIndex(i => i.id === item.id);
   photoViewItem = item;
+  renderPhotoView();
+  $("#photo-view-modal").classList.add("open");
+}
+
+function renderPhotoView() {
+  const item = photoViewItem;
   $("#photo-view-img").src = item.image;
   $("#photo-view-name").textContent = item.name || "";
   $("#photo-view-category").value = item.category;
   $("#photo-view-formality").value = itemFormality(item);
-  $("#photo-view-modal").classList.add("open");
+  $("#photo-view-position").textContent = photoViewList.length > 1
+    ? `${photoViewIndex + 1} / ${photoViewList.length}`
+    : "";
 }
+
+function photoViewStep(delta) {
+  if (photoViewList.length < 2) return;
+  photoViewIndex = (photoViewIndex + delta + photoViewList.length) % photoViewList.length;
+  photoViewItem = photoViewList[photoViewIndex];
+  renderPhotoView();
+}
+
+// Pointer events (not touch events) so this works identically for a real
+// swipe on a phone and a mouse drag when testing on desktop.
+let photoViewDragStartX = null;
+function bindPhotoViewSwipe() {
+  const box = $(".photo-view-box");
+  const SWIPE_THRESHOLD = 40;
+  box.addEventListener("pointerdown", (e) => { photoViewDragStartX = e.clientX; });
+  box.addEventListener("pointerup", (e) => {
+    if (photoViewDragStartX === null) return;
+    const dx = e.clientX - photoViewDragStartX;
+    photoViewDragStartX = null;
+    if (dx <= -SWIPE_THRESHOLD) photoViewStep(1);
+    else if (dx >= SWIPE_THRESHOLD) photoViewStep(-1);
+  });
+}
+bindPhotoViewSwipe();
 $("#photo-view-formality").addEventListener("change", async (e) => {
   if (!photoViewItem) return;
   photoViewItem.formality = e.target.value;
@@ -282,14 +324,22 @@ async function loadItems() {
 
 let closetFormalityFilter = "all";
 
+// Shared by renderCloset (what to draw) and openPhotoView (what "next" and
+// "previous" mean while swiping) so the swipe order always matches exactly
+// what's on screen in that section, filter included.
+function getClosetSectionItems(cat) {
+  let items = itemsCache.filter(i => i.category === cat);
+  if (closetFormalityFilter !== "all") {
+    items = items.filter(i => itemFormality(i) === closetFormalityFilter);
+  }
+  return items;
+}
+
 function renderCloset() {
   CATEGORIES.forEach(cat => {
     const grid = $(`#grid-${cat}`);
     grid.innerHTML = "";
-    let items = itemsCache.filter(i => i.category === cat);
-    if (closetFormalityFilter !== "all") {
-      items = items.filter(i => itemFormality(i) === closetFormalityFilter);
-    }
+    const items = getClosetSectionItems(cat);
     if (items.length === 0) {
       const msg = closetFormalityFilter === "all"
         ? "No items yet"

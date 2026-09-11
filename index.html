@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Closet Companion</title>
 <meta name="theme-color" content="#7c5cff" />
-<link rel="manifest" href="manifest.json?v=25" />
+<link rel="manifest" href="manifest.json?v=26" />
 <link rel="icon" href="assets/icon.svg" />
-<link rel="stylesheet" href="styles.css?v=25" />
+<link rel="stylesheet" href="styles.css?v=26" />
 </head>
 <body>
 <div id="closet-intro" class="closet-intro">
@@ -28,7 +28,7 @@
         👤 <span id="profile-name-label">Me</span>
       </button>
       <button id="sources-toggle" class="icon-btn sources-btn" title="How Suggest Outfit works">
-        <img class="sources-icon-img" src="assets/sources-icon.png?v=25" alt="" />
+        <img class="sources-icon-img" src="assets/sources-icon.png?v=26" alt="" />
       </button>
       <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
     </div>
@@ -219,8 +219,9 @@
 <div id="photo-view-modal" class="modal-overlay photo-view-overlay">
   <div class="photo-view-box">
     <button id="photo-view-close" class="photo-view-close">✕</button>
-    <img id="photo-view-img" alt="">
+    <img id="photo-view-img" alt="" draggable="false">
     <p id="photo-view-name" class="photo-view-name"></p>
+    <p id="photo-view-position" class="photo-view-position"></p>
     <label class="photo-view-field">
       Category
       <select id="photo-view-category">
@@ -294,8 +295,8 @@
   </div>
 </div>
 
-<script src="bg-remove.js?v=25"></script>
-<script src="db.js?v=25"></script>
-<script src="app.js?v=25"></script>
+<script src="bg-remove.js?v=26"></script>
+<script src="db.js?v=26"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
